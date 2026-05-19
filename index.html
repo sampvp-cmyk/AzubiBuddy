@@ -422,69 +422,15 @@
     <div class="sheet-handle"></div>
     <div class="sheet-title" id="bericht-title">Neuer Bericht</div>
 
-    <!-- Zeitraum -->
     <div class="form-group">
-      <label>Zeitraum</label>
+      <label>Kalenderwoche &amp; Jahr</label>
       <div class="row-2">
         <input type="number" id="b-kw" placeholder="KW (z.B. 21)" min="1" max="53">
         <input type="number" id="b-jahr" placeholder="Jahr" min="2020" max="2035">
       </div>
     </div>
 
-    <!-- Berichtsform -->
-    <div class="form-group">
-      <label>Berichtsform</label>
-      <select id="b-form" onchange="onBerichtsformChange()">
-        <option value="tages">Tagesberichte (Mo–Fr)</option>
-        <option value="tages7">Tagesberichte (Mo–So)</option>
-        <option value="wochen" selected>Wochenbericht</option>
-        <option value="wochen-var">Wochenbericht (variabel)</option>
-        <option value="2wochen">2-Wochen-Rhythmus</option>
-        <option value="abteilung">Abteilungsbericht</option>
-        <option value="monats">Monatsbericht</option>
-        <option value="monats-var">Monatsbericht (variabel)</option>
-      </select>
-    </div>
-
-    <div class="config-divider">KI-Einstellungen</div>
-    <div class="config-grid">
-      <div class="form-group">
-        <label>Darstellungsform</label>
-        <select id="b-darstellung">
-          <option value="stichpunkte">Stichpunkte</option>
-          <option value="fliesstext">Fließtext</option>
-          <option value="kombination">Kombination</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Berufsfeld</label>
-        <select id="b-berufsfeld">
-          <option value="technisch">Technisch</option>
-          <option value="kaufmaennisch">Kaufmännisch</option>
-          <option value="sonstiges">Sonstiges</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Detailgrad</label>
-        <select id="b-detail">
-          <option value="kurz">Kurz</option>
-          <option value="mittel" selected>Mittel</option>
-          <option value="ausfuehrlich">Ausführlich</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Sprachebene</label>
-        <select id="b-sprache">
-          <option value="einfach">Einfach</option>
-          <option value="sachlich" selected>Sachlich</option>
-          <option value="formell">Formell</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="config-divider">Inhalte</div>
-
-    <!-- Normale Textfelder (Wochen/Monats etc.) -->
+    <!-- Normale Felder (Wochen/Monats etc.) -->
     <div id="b-standard-inputs">
       <div class="form-group">
         <label>Betrieb — Was habe ich gemacht?</label>
@@ -496,7 +442,7 @@
       </div>
     </div>
 
-    <!-- Tageseingaben (nur bei Tagesberichten) -->
+    <!-- Tageseingaben -->
     <div id="b-day-inputs" class="day-inputs">
       <div class="form-group" style="margin-bottom:6px">
         <label>Betrieb – täglich</label>
@@ -633,6 +579,15 @@
       </select>
     </div>
     <div class="settings-item">
+      <div class="settings-label">Word-Vorlage (.docx)</div>
+      <div class="settings-sub">Lade deine eigene IHK-Vorlage hoch. Platzhalter: <code style="font-size:11px;background:#f1f5f9;padding:1px 5px;border-radius:4px">{{kw}}</code> <code style="font-size:11px;background:#f1f5f9;padding:1px 5px;border-radius:4px">{{jahr}}</code> <code style="font-size:11px;background:#f1f5f9;padding:1px 5px;border-radius:4px">{{betrieb}}</code> <code style="font-size:11px;background:#f1f5f9;padding:1px 5px;border-radius:4px">{{schule}}</code> <code style="font-size:11px;background:#f1f5f9;padding:1px 5px;border-radius:4px">{{name}}</code> <code style="font-size:11px;background:#f1f5f9;padding:1px 5px;border-radius:4px">{{mo}}</code>–<code style="font-size:11px;background:#f1f5f9;padding:1px 5px;border-radius:4px">{{fr}}</code></div>
+      <p id="tmpl-status" style="font-size:13px;color:var(--text-muted);margin:8px 0">Keine Vorlage hinterlegt</p>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-light btn-sm" onclick="uploadTemplate()">Vorlage hochladen</button>
+        <button class="btn btn-sm" style="color:var(--danger);background:none;border:1px solid var(--border);cursor:pointer" onclick="removeTemplate()">Entfernen</button>
+      </div>
+    </div>
+    <div class="settings-item">
       <div class="settings-label">Groq API-Key</div>
       <div class="settings-sub">Für KI-Funktionen. Kostenlos unter console.groq.com</div>
       <input type="password" id="set-apikey" placeholder="gsk_…">
@@ -643,8 +598,9 @@
   </div>
 </div>
 
-<!-- Snackbar -->
-<div class="snackbar" id="snackbar"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.4/pizzip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.44.0/docxtemplater.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
 <script>
 // ── Storage helpers ───────────────────────────────────────────────────────────
@@ -748,6 +704,7 @@ function renderBerichte() {
         </div>
         <div class="bericht-actions">
           <button class="btn btn-sm btn-light" onclick="editBericht('${b.id}')">Bearbeiten</button>
+          <button class="btn btn-sm" style="background:#f0fdf4;color:#16a34a;border:none;cursor:pointer;padding:7px 14px;font-size:13px;border-radius:8px;font-weight:600" onclick="exportWord('${b.id}')">Word</button>
           <button class="btn btn-sm" style="color:var(--danger);background:none;border:none;cursor:pointer" onclick="delBericht('${b.id}')">Löschen</button>
         </div>
       </div>
@@ -1140,7 +1097,114 @@ function saveKeyRetry() {
   kiFormulierung();
 }
 
-// ── SETTINGS ──────────────────────────────────────────────────────────────────
+// ── WORD EXPORT ───────────────────────────────────────────────────────────────
+let storedTemplate = null; // ArrayBuffer of the .docx template
+
+function exportWord(id) {
+  const b = getBerichte().find(x => x.id === id);
+  if (!b) return;
+  // Check if we have a template stored
+  const tmplB64 = localStorage.getItem('vorlage_docx');
+  if (!tmplB64) {
+    // No template yet → ask user to upload one
+    openTemplateUpload(id);
+    return;
+  }
+  generateDocx(b, tmplB64);
+}
+
+function openTemplateUpload(pendingId) {
+  // Create a temporary file input
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = '.docx';
+  inp.onchange = async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const buf = await file.arrayBuffer();
+    // Store as base64
+    const b64 = arrayBufferToBase64(buf);
+    localStorage.setItem('vorlage_docx', b64);
+    toast('Vorlage gespeichert ✓');
+    if (pendingId) exportWord(pendingId);
+  };
+  inp.click();
+}
+
+function generateDocx(b, tmplB64) {
+  try {
+    const s = getSettings();
+    const buf = base64ToArrayBuffer(tmplB64);
+    const zip = new PizZip(buf);
+    const doc = new Docxtemplater(zip, {
+      paragraphLoop: true,
+      linebreaks: true,
+      nullGetter: () => ''
+    });
+
+    // Build data object with all possible placeholders
+    const data = {
+      name:    s.name    || '',
+      betrieb_name: s.betrieb || '',
+      beruf:   s.beruf   || '',
+      kw:      String(b.kw),
+      jahr:    String(b.jahr),
+      betrieb: b.betrieb || '',
+      schule:  b.schule  || '',
+      // Tagesberichte
+      mo: b.tage?.mo || '', di: b.tage?.di || '',
+      mi: b.tage?.mi || '', do: b.tage?.do || '',
+      fr: b.tage?.fr || '', sa: b.tage?.sa || '',
+      so: b.tage?.so || ''
+    };
+
+    doc.render(data);
+    const out = doc.getZip().generate({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    saveAs(out, `Berichtsheft_KW${b.kw}_${b.jahr}.docx`);
+    toast('Word-Datei wird heruntergeladen ✓');
+  } catch(e) {
+    console.error(e);
+    toast('Fehler beim Export: ' + (e.message || 'Vorlage prüfen'));
+  }
+}
+
+function arrayBufferToBase64(buffer) {
+  let bin = '';
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < bytes.byteLength; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+
+function base64ToArrayBuffer(b64) {
+  const bin = atob(b64);
+  const buf = new ArrayBuffer(bin.length);
+  const view = new Uint8Array(buf);
+  for (let i = 0; i < bin.length; i++) view[i] = bin.charCodeAt(i);
+  return buf;
+}
+
+// Template management in Settings
+function uploadTemplate() {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.docx';
+  inp.onchange = async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const buf = await file.arrayBuffer();
+    localStorage.setItem('vorlage_docx', arrayBufferToBase64(buf));
+    document.getElementById('tmpl-status').textContent = '✓ ' + file.name;
+    document.getElementById('tmpl-status').style.color = 'var(--success)';
+    toast('Vorlage gespeichert ✓');
+  };
+  inp.click();
+}
+
+function removeTemplate() {
+  localStorage.removeItem('vorlage_docx');
+  document.getElementById('tmpl-status').textContent = 'Keine Vorlage hinterlegt';
+  document.getElementById('tmpl-status').style.color = 'var(--text-muted)';
+  toast('Vorlage entfernt');
+}
 function openSettings() {
   const s = getSettings();
   document.getElementById('set-name').value         = s.name         || '';
@@ -1150,6 +1214,10 @@ function openSettings() {
   document.getElementById('set-darstellung').value  = s.darstellung  || 'stichpunkte';
   document.getElementById('set-sprache').value      = s.sprache      || 'sachlich';
   document.getElementById('set-apikey').value       = s.groq_api_key || '';
+  const hasTmpl = !!localStorage.getItem('vorlage_docx');
+  const tmplEl = document.getElementById('tmpl-status');
+  tmplEl.textContent = hasTmpl ? '✓ Vorlage hinterlegt' : 'Keine Vorlage hinterlegt';
+  tmplEl.style.color = hasTmpl ? 'var(--success)' : 'var(--text-muted)';
   openModal('modal-settings');
 }
 
