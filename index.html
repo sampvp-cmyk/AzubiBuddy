@@ -263,6 +263,31 @@
     /* KI loading */
     .ki-loading { text-align: center; padding: 32px 20px; }
     .ki-loading p { font-size: 14px; color: var(--text-muted); margin-top: 14px; }
+
+    /* Bericht config selects */
+    .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .config-grid .form-group { margin-bottom: 0; }
+    select { cursor: pointer; }
+
+    /* Day inputs for Tagesberichte */
+    .day-inputs { display: none; flex-direction: column; gap: 10px; }
+    .day-inputs.visible { display: flex; }
+    .day-row { display: flex; gap: 8px; align-items: flex-start; }
+    .day-label {
+      font-size: 12px; font-weight: 700; color: var(--primary);
+      background: var(--primary-light); border-radius: 6px;
+      padding: 10px 8px; min-width: 34px; text-align: center; flex-shrink: 0;
+      margin-top: 0;
+    }
+    .day-row textarea { min-height: 60px; font-size: 14px; }
+
+    /* Config divider */
+    .config-divider {
+      font-size: 11px; font-weight: 700; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.06em;
+      margin: 16px 0 10px; padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
   </style>
 </head>
 <body>
@@ -395,27 +420,107 @@
 <div class="overlay" id="modal-bericht">
   <div class="sheet">
     <div class="sheet-handle"></div>
-    <div class="sheet-title" id="bericht-title">Neuer Wochenbericht</div>
+    <div class="sheet-title" id="bericht-title">Neuer Bericht</div>
+
+    <!-- Zeitraum -->
     <div class="form-group">
-      <label>Kalenderwoche &amp; Jahr</label>
+      <label>Zeitraum</label>
       <div class="row-2">
         <input type="number" id="b-kw" placeholder="KW (z.B. 21)" min="1" max="53">
         <input type="number" id="b-jahr" placeholder="Jahr" min="2020" max="2035">
       </div>
     </div>
+
+    <!-- Berichtsform -->
     <div class="form-group">
-      <label>Betrieb — Was habe ich gemacht?</label>
-      <textarea id="b-betrieb" placeholder="Stichpunkte oder ganzer Text…"></textarea>
+      <label>Berichtsform</label>
+      <select id="b-form" onchange="onBerichtsformChange()">
+        <option value="tages">Tagesberichte (Mo–Fr)</option>
+        <option value="tages7">Tagesberichte (Mo–So)</option>
+        <option value="wochen" selected>Wochenbericht</option>
+        <option value="wochen-var">Wochenbericht (variabel)</option>
+        <option value="2wochen">2-Wochen-Rhythmus</option>
+        <option value="abteilung">Abteilungsbericht</option>
+        <option value="monats">Monatsbericht</option>
+        <option value="monats-var">Monatsbericht (variabel)</option>
+      </select>
     </div>
-    <div class="form-group">
-      <label>Berufsschule — Was haben wir gelernt?</label>
-      <textarea id="b-schule" placeholder="Stichpunkte oder ganzer Text…"></textarea>
+
+    <div class="config-divider">KI-Einstellungen</div>
+    <div class="config-grid">
+      <div class="form-group">
+        <label>Darstellungsform</label>
+        <select id="b-darstellung">
+          <option value="stichpunkte">Stichpunkte</option>
+          <option value="fliesstext">Fließtext</option>
+          <option value="kombination">Kombination</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Berufsfeld</label>
+        <select id="b-berufsfeld">
+          <option value="technisch">Technisch</option>
+          <option value="kaufmaennisch">Kaufmännisch</option>
+          <option value="sonstiges">Sonstiges</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Detailgrad</label>
+        <select id="b-detail">
+          <option value="kurz">Kurz</option>
+          <option value="mittel" selected>Mittel</option>
+          <option value="ausfuehrlich">Ausführlich</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Sprachebene</label>
+        <select id="b-sprache">
+          <option value="einfach">Einfach</option>
+          <option value="sachlich" selected>Sachlich</option>
+          <option value="formell">Formell</option>
+        </select>
+      </div>
     </div>
-    <button class="btn btn-light" style="margin-bottom:10px" onclick="kiFormulierung()">
-      ✨ KI-Formulierungshilfe
-    </button>
-    <button class="btn btn-primary" onclick="saveBericht()" style="margin-bottom:8px">Speichern</button>
-    <button class="btn btn-ghost" onclick="closeModal('modal-bericht')">Abbrechen</button>
+
+    <div class="config-divider">Inhalte</div>
+
+    <!-- Normale Textfelder (Wochen/Monats etc.) -->
+    <div id="b-standard-inputs">
+      <div class="form-group">
+        <label>Betrieb — Was habe ich gemacht?</label>
+        <textarea id="b-betrieb" placeholder="Stichpunkte oder ganzer Text…"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Berufsschule — Was haben wir gelernt?</label>
+        <textarea id="b-schule" placeholder="Stichpunkte oder ganzer Text…"></textarea>
+      </div>
+    </div>
+
+    <!-- Tageseingaben (nur bei Tagesberichten) -->
+    <div id="b-day-inputs" class="day-inputs">
+      <div class="form-group" style="margin-bottom:6px">
+        <label>Betrieb – täglich</label>
+      </div>
+      <div class="day-row"><span class="day-label">Mo</span><textarea id="b-mo" placeholder="Montag…"></textarea></div>
+      <div class="day-row"><span class="day-label">Di</span><textarea id="b-di" placeholder="Dienstag…"></textarea></div>
+      <div class="day-row"><span class="day-label">Mi</span><textarea id="b-mi" placeholder="Mittwoch…"></textarea></div>
+      <div class="day-row"><span class="day-label">Do</span><textarea id="b-do" placeholder="Donnerstag…"></textarea></div>
+      <div class="day-row"><span class="day-label">Fr</span><textarea id="b-fr" placeholder="Freitag…"></textarea></div>
+      <div class="day-row" id="b-sa-row" style="display:none"><span class="day-label">Sa</span><textarea id="b-sa" placeholder="Samstag…"></textarea></div>
+      <div class="day-row" id="b-so-row" style="display:none"><span class="day-label">So</span><textarea id="b-so" placeholder="Sonntag…"></textarea></div>
+      <div class="form-group" style="margin-top:12px">
+        <label>Berufsschule — Was haben wir gelernt?</label>
+        <textarea id="b-schule-tag" placeholder="Stichpunkte oder ganzer Text…"></textarea>
+      </div>
+    </div>
+
+    <div style="margin-top:16px">
+      <button class="btn btn-light" style="margin-bottom:10px" onclick="kiFormulierung()">
+        ✨ KI-Formulierungshilfe
+      </button>
+      <button class="btn btn-primary" onclick="saveBericht()" style="margin-bottom:8px">Speichern</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-bericht')">Abbrechen</button>
+    </div>
   </div>
 </div>
 
@@ -577,6 +682,14 @@ function renderHome() {
 }
 
 // ── BERICHTSHEFT ──────────────────────────────────────────────────────────────
+const FORM_LABELS = {
+  'tages': 'Tagesbericht', 'tages7': 'Tagesbericht (Mo–So)',
+  'wochen': 'Wochenbericht', 'wochen-var': 'Wochenbericht (variabel)',
+  '2wochen': '2-Wochen-Rhythmus', 'abteilung': 'Abteilungsbericht',
+  'monats': 'Monatsbericht', 'monats-var': 'Monatsbericht (variabel)'
+};
+const TAGE_NAMES = { mo:'Montag', di:'Dienstag', mi:'Mittwoch', do:'Donnerstag', fr:'Freitag', sa:'Samstag', so:'Sonntag' };
+
 function renderBerichte() {
   const list = getBerichte().slice().reverse();
   const el = document.getElementById('bericht-list');
@@ -584,34 +697,63 @@ function renderBerichte() {
     el.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><h3>Noch keine Berichte</h3><p>Tippe auf + um deinen ersten Bericht zu erstellen.</p></div>`;
     return;
   }
-  el.innerHTML = list.map(b => `
-    <div class="card">
+  el.innerHTML = list.map(b => {
+    const formLabel = FORM_LABELS[b.form] || 'Wochenbericht';
+    let contentHtml = '';
+    if (b.tage) {
+      const days = Object.entries(b.tage).filter(([,v])=>v).map(([k,v])=>
+        `<div style="margin-bottom:8px"><span style="font-size:11px;font-weight:700;color:var(--primary)">${TAGE_NAMES[k] || k}</span><p class="bericht-text" style="margin-top:2px">${esc(v).replace(/\n/g,'<br>')}</p></div>`
+      ).join('');
+      contentHtml = `<div class="bericht-section"><div class="section-title">Betrieb</div>${days}</div>`;
+    } else {
+      contentHtml = `<div class="bericht-section"><div class="section-title">Betrieb</div><p class="bericht-text">${esc(b.betrieb||'').replace(/\n/g,'<br>')}</p></div>`;
+    }
+    if (b.schule) {
+      contentHtml += `<div class="bericht-section"><div class="section-title">Berufsschule</div><p class="bericht-text">${esc(b.schule).replace(/\n/g,'<br>')}</p></div>`;
+    }
+    return `<div class="card">
       <div class="bericht-card-header">
-        <span class="badge badge-blue">KW ${b.kw} / ${b.jahr}</span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <span class="badge badge-blue">KW ${b.kw} / ${b.jahr}</span>
+          <span class="badge" style="background:#f1f5f9;color:#475569">${formLabel}</span>
+        </div>
         <div class="bericht-actions">
           <button class="btn btn-sm btn-light" onclick="editBericht('${b.id}')">Bearbeiten</button>
           <button class="btn btn-sm" style="color:var(--danger);background:none;border:none;cursor:pointer" onclick="delBericht('${b.id}')">Löschen</button>
         </div>
       </div>
-      <div class="bericht-section">
-        <div class="section-title">Betrieb</div>
-        <p class="bericht-text">${esc(b.betrieb).replace(/\n/g,'<br>')}</p>
-      </div>
-      <div class="bericht-section">
-        <div class="section-title">Berufsschule</div>
-        <p class="bericht-text">${esc(b.schule).replace(/\n/g,'<br>')}</p>
-      </div>
-    </div>`).join('');
+      ${contentHtml}
+    </div>`;
+  }).join('');
+}
+
+function onBerichtsformChange() {
+  const form = document.getElementById('b-form').value;
+  const isTages = form === 'tages' || form === 'tages7';
+  document.getElementById('b-standard-inputs').style.display = isTages ? 'none' : 'block';
+  const dayInputs = document.getElementById('b-day-inputs');
+  if (isTages) dayInputs.classList.add('visible'); else dayInputs.classList.remove('visible');
+  document.getElementById('b-sa-row').style.display = form === 'tages7' ? 'flex' : 'none';
+  document.getElementById('b-so-row').style.display = form === 'tages7' ? 'flex' : 'none';
 }
 
 function openNewBericht() {
   editingId = null;
-  document.getElementById('bericht-title').textContent = 'Neuer Wochenbericht';
+  document.getElementById('bericht-title').textContent = 'Neuer Bericht';
   const now = new Date();
   document.getElementById('b-kw').value    = getKW(now);
   document.getElementById('b-jahr').value  = now.getFullYear();
+  document.getElementById('b-form').value        = 'wochen';
+  document.getElementById('b-darstellung').value = 'stichpunkte';
+  document.getElementById('b-berufsfeld').value  = 'technisch';
+  document.getElementById('b-detail').value      = 'mittel';
+  document.getElementById('b-sprache').value     = 'sachlich';
   document.getElementById('b-betrieb').value = '';
   document.getElementById('b-schule').value  = '';
+  ['b-mo','b-di','b-mi','b-do','b-fr','b-sa','b-so','b-schule-tag'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  onBerichtsformChange();
   openModal('modal-bericht');
 }
 
@@ -622,23 +764,67 @@ function editBericht(id) {
   document.getElementById('bericht-title').textContent = 'Bericht bearbeiten';
   document.getElementById('b-kw').value    = b.kw;
   document.getElementById('b-jahr').value  = b.jahr;
-  document.getElementById('b-betrieb').value = b.betrieb;
-  document.getElementById('b-schule').value  = b.schule;
+  document.getElementById('b-form').value        = b.form        || 'wochen';
+  document.getElementById('b-darstellung').value = b.darstellung || 'stichpunkte';
+  document.getElementById('b-berufsfeld').value  = b.berufsfeld  || 'technisch';
+  document.getElementById('b-detail').value      = b.detail      || 'mittel';
+  document.getElementById('b-sprache').value     = b.sprache     || 'sachlich';
+  if (b.tage) {
+    document.getElementById('b-mo').value = b.tage.mo || '';
+    document.getElementById('b-di').value = b.tage.di || '';
+    document.getElementById('b-mi').value = b.tage.mi || '';
+    document.getElementById('b-do').value = b.tage.do || '';
+    document.getElementById('b-fr').value = b.tage.fr || '';
+    document.getElementById('b-sa').value = b.tage.sa || '';
+    document.getElementById('b-so').value = b.tage.so || '';
+    document.getElementById('b-schule-tag').value = b.schule || '';
+  } else {
+    document.getElementById('b-betrieb').value = b.betrieb || '';
+    document.getElementById('b-schule').value  = b.schule  || '';
+  }
+  onBerichtsformChange();
   openModal('modal-bericht');
 }
 
 function saveBericht() {
   const kw     = +document.getElementById('b-kw').value;
   const jahr   = +document.getElementById('b-jahr').value;
-  const betrieb = document.getElementById('b-betrieb').value.trim();
-  const schule  = document.getElementById('b-schule').value.trim();
-  if (!kw || !jahr || !betrieb || !schule) { toast('Bitte alle Felder ausfüllen'); return; }
+  const form        = document.getElementById('b-form').value;
+  const darstellung = document.getElementById('b-darstellung').value;
+  const berufsfeld  = document.getElementById('b-berufsfeld').value;
+  const detail      = document.getElementById('b-detail').value;
+  const sprache     = document.getElementById('b-sprache').value;
+  const isTages = form === 'tages' || form === 'tages7';
+
+  if (!kw || !jahr) { toast('Bitte KW und Jahr ausfüllen'); return; }
+
+  let entry = { id: editingId || Date.now().toString(), kw, jahr, form, darstellung, berufsfeld, detail, sprache, ts: Date.now() };
+
+  if (isTages) {
+    const mo = document.getElementById('b-mo').value.trim();
+    const di = document.getElementById('b-di').value.trim();
+    if (!mo && !di) { toast('Bitte mindestens einen Tag ausfüllen'); return; }
+    entry.tage = {
+      mo, di,
+      mi: document.getElementById('b-mi').value.trim(),
+      do: document.getElementById('b-do').value.trim(),
+      fr: document.getElementById('b-fr').value.trim(),
+      sa: document.getElementById('b-sa').value.trim(),
+      so: document.getElementById('b-so').value.trim()
+    };
+    entry.schule = document.getElementById('b-schule-tag').value.trim();
+  } else {
+    entry.betrieb = document.getElementById('b-betrieb').value.trim();
+    entry.schule  = document.getElementById('b-schule').value.trim();
+    if (!entry.betrieb || !entry.schule) { toast('Bitte alle Felder ausfüllen'); return; }
+  }
+
   const list = getBerichte();
   if (editingId) {
     const i = list.findIndex(b=>b.id===editingId);
-    if (i>=0) list[i] = {...list[i], kw, jahr, betrieb, schule};
+    if (i>=0) list[i] = entry;
   } else {
-    list.push({ id: Date.now().toString(), kw, jahr, betrieb, schule, ts: Date.now() });
+    list.push(entry);
   }
   saveBerichte(list);
   closeModal('modal-bericht');
@@ -787,31 +973,93 @@ function addTyper() {
 
 // ── KI-FORMULIERUNG ───────────────────────────────────────────────────────────
 async function kiFormulierung() {
-  const betrieb = document.getElementById('b-betrieb').value.trim();
-  const schule  = document.getElementById('b-schule').value.trim();
-  if (!betrieb && !schule) { toast('Bitte zuerst Stichpunkte eingeben'); return; }
+  const form        = document.getElementById('b-form').value;
+  const darstellung = document.getElementById('b-darstellung').value;
+  const berufsfeld  = document.getElementById('b-berufsfeld').value;
+  const detail      = document.getElementById('b-detail').value;
+  const sprache     = document.getElementById('b-sprache').value;
+  const kw          = document.getElementById('b-kw').value;
+  const jahr        = document.getElementById('b-jahr').value;
+  const isTages     = form === 'tages' || form === 'tages7';
+
+  // Collect input content
+  let betriebInput = '';
+  if (isTages) {
+    const days = ['mo','di','mi','do','fr','sa','so'];
+    betriebInput = days.map(d => {
+      const v = document.getElementById('b-'+d)?.value.trim();
+      return v ? `${TAGE_NAMES[d]}: ${v}` : '';
+    }).filter(Boolean).join('\n');
+  } else {
+    betriebInput = document.getElementById('b-betrieb').value.trim();
+  }
+  const schuleInput = isTages
+    ? document.getElementById('b-schule-tag').value.trim()
+    : document.getElementById('b-schule').value.trim();
+
+  if (!betriebInput && !schuleInput) { toast('Bitte zuerst Stichpunkte eingeben'); return; }
+
   show('ki-loading'); hide('ki-result'); hide('ki-error');
   openModal('modal-ki');
+
+  // Build form description
+  const formDesc = {
+    'tages':      'Tagesbericht (Montag bis Freitag) – jeder Tag wird einzeln aufgeführt',
+    'tages7':     'Tagesbericht (Montag bis Sonntag) – jeder Tag wird einzeln aufgeführt',
+    'wochen':     'Wochenbericht – ein zusammenhängender Bericht für die gesamte Woche',
+    'wochen-var': 'Wochenbericht (variabel) – mehrere separate Tätigkeiten innerhalb der Woche',
+    '2wochen':    '2-Wochen-Rhythmus-Bericht – Wochenbericht über einen Zeitraum von zwei Wochen',
+    'abteilung':  'Abteilungsbericht – Tätigkeiten gegliedert nach Abteilungen, keine feste Wochenstruktur',
+    'monats':     'Monatsbericht – feste Struktur, umfasst einen kompletten Monat',
+    'monats-var': 'Monatsbericht (variabel) – freie Struktur für einen Monat'
+  }[form];
+
+  const darstellungDesc = { stichpunkte: 'Stichpunkte', fliesstext: 'Fließtext', kombination: 'Kombination aus Fließtext und Stichpunkten' }[darstellung];
+  const detailDesc = { kurz: 'kurz und knapp (2–4 Punkte/Sätze pro Abschnitt)', mittel: 'mittel (4–7 Punkte/Sätze)', ausfuehrlich: 'ausführlich und detailliert' }[detail];
+  const sprachDesc = { einfach: 'einfach und klar verständlich', sachlich: 'sachlich und fachlich korrekt', formell: 'formell und ausbildungsgerecht' }[sprache];
+  const berufDesc = { technisch: 'gewerblich-technisch', kaufmaennisch: 'kaufmännisch', sonstiges: 'allgemein' }[berufsfeld];
+
+  const settings = getSettings();
+  const beruf = settings.beruf || 'IT-System-Elektroniker';
+
+  const prompt = `Du bist ein Assistent für Berufsausbildung in Deutschland. Erstelle einen professionellen Ausbildungsnachweis (Berichtsheft-Eintrag) für einen Auszubildenden.
+
+PFLICHTANFORDERUNGEN:
+- Keine Emojis
+- Keine Umgangssprache
+- Ausbildungs- und ausbildergerechte Sprache
+- Der Bericht muss beim IHK-Standard genügen
+
+KONFIGURATION:
+- Ausbildungsberuf: ${beruf}
+- Berufsfeld: ${berufDesc}
+- Berichtsform: ${formDesc}
+- Zeitraum: KW ${kw}/${jahr}
+- Darstellungsform: ${darstellungDesc}
+- Detailgrad: ${detailDesc}
+- Sprachebene: ${sprachDesc}
+
+EINGABE BETRIEB:
+${betriebInput || 'keine Angabe'}
+
+EINGABE BERUFSSCHULE:
+${schuleInput || 'keine Angabe'}
+
+${isTages ? `WICHTIG: Strukturiere den Betriebsteil als Tagesbericht. Führe jeden Tag (${form==='tages7'?'Montag bis Sonntag':'Montag bis Freitag'}) einzeln auf. Format pro Tag: "Montag:\\n[Inhalt]"` : ''}
+
+Antworte NUR mit diesem JSON (kein Markdown, keine Erklärungen):
+{"betrieb":"vollständiger Betriebstext","schule":"vollständiger Schultext"}`;
+
   try {
     const key = getSettings().groq_api_key;
     if (!key) throw new Error('Kein Groq API-Key gespeichert.');
-    const settings = getSettings();
-    const beruf = settings.beruf || 'IT-System-Elektroniker';
-    const prompt = `Formuliere einen professionellen Berichtsheft-Eintrag für einen deutschen Azubi (${beruf}).
-
-Betrieb-Stichpunkte: ${betrieb || 'keine'}
-Berufsschule-Stichpunkte: ${schule || 'keine'}
-
-Antworte NUR mit JSON (kein Markdown):
-{"betrieb":"vollständiger Text für den Betrieb","schule":"vollständiger Text für die Berufsschule"}`;
-
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
         messages: [{ role:'user', content: prompt }],
-        max_tokens: 700
+        max_tokens: 900
       })
     });
     if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || 'API Fehler ' + res.status); }
@@ -829,8 +1077,27 @@ Antworte NUR mit JSON (kein Markdown):
 }
 
 function useKi() {
-  document.getElementById('b-betrieb').value = document.getElementById('ki-b-result').value;
-  document.getElementById('b-schule').value  = document.getElementById('ki-s-result').value;
+  const form = document.getElementById('b-form').value;
+  const isTages = form === 'tages' || form === 'tages7';
+  const betriebText = document.getElementById('ki-b-result').value;
+  const schuleText  = document.getElementById('ki-s-result').value;
+  if (isTages) {
+    // Try to split by day names
+    const days = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
+    const dayIds = ['b-mo','b-di','b-mi','b-do','b-fr','b-sa','b-so'];
+    let remaining = betriebText;
+    days.forEach((day, i) => {
+      const regex = new RegExp(day + '[:\\s]+([\\s\\S]*?)(?=' + days.slice(i+1).join('|') + '|$)', 'i');
+      const match = remaining.match(regex);
+      if (match && document.getElementById(dayIds[i])) {
+        document.getElementById(dayIds[i]).value = match[1].trim();
+      }
+    });
+    document.getElementById('b-schule-tag').value = schuleText;
+  } else {
+    document.getElementById('b-betrieb').value = betriebText;
+    document.getElementById('b-schule').value  = schuleText;
+  }
   closeModal('modal-ki');
   toast('KI-Vorschlag übernommen ✓');
 }
