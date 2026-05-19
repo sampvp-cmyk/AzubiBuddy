@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>AzubiBuddy</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="AzubiBuddy">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <style>
+    :root {
+      --bg: #f0f4ff;
+      --surface: #ffffff;
+      --surface2: #f8faff;
+      --primary: #2563eb;
+      --primary-light: #dbeafe;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --danger: #ef4444;
+      --success: #10b981;
+      --radius: 16px;
+      --radius-sm: 10px;
+      --shadow: 0 2px 12px rgba(37,99,235,0.07);
+      --nav-h: 72px;
+      --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      max-width: 430px;
+      margin: 0 auto;
+      overflow-x: hidden;
+    }
+    .screen { display: none; min-height: 100vh; padding-bottom: calc(var(--nav-h) + 16px); }
+    .screen.active { display: block; }
+
+    /* Header */
+    .header {
+      background: var(--surface);
+      padding: 52px 20px 14px;
+      position: sticky; top: 0; z-index: 10;
+      border-bottom: 1px solid var(--border);
+    }
+    .header h1 { font-size: 22px; font-weight: 700; }
+    .header p { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+    .header-row { display: flex; align-items: center; justify-content: space-between; }
+
+    /* Bottom Nav */
+    .nav {
+      position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 430px; height: var(--nav-h);
+      background: var(--surface); border-top: 1px solid var(--border);
+      display: flex; align-items: center; z-index: 100;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .nav-item {
+      flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+      padding: 8px 4px; cursor: pointer; border: none; background: none;
+      color: var(--text-muted); font-size: 10px; font-family: var(--font); font-weight: 500;
+    }
+    .nav-item svg { transition: transform 0.15s; }
+    .nav-item.active { color: var(--primary); }
+    .nav-item.active svg { transform: scale(1.12); }
+
+    /* Content */
+    .content { padding: 16px; }
+
+    /* Cards */
+    .card {
+      background: var(--surface); border-radius: var(--radius);
+      padding: 16px; box-shadow: var(--shadow); margin-bottom: 12px;
+    }
+
+    /* Stats */
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+    .stat-card {
+      background: var(--surface); border-radius: var(--radius-sm);
+      padding: 16px 12px; text-align: center; box-shadow: var(--shadow);
+    }
+    .stat-value { font-size: 30px; font-weight: 700; color: var(--primary); }
+    .stat-label { font-size: 11px; color: var(--text-muted); margin-top: 2px; font-weight: 500; }
+
+    /* Section title */
+    .section-title {
+      font-size: 11px; font-weight: 700; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px;
+    }
+
+    /* List items */
+    .list-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 13px 0; border-bottom: 1px solid var(--border); cursor: pointer;
+    }
+    .list-item:last-child { border-bottom: none; }
+    .list-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: var(--primary-light); display: flex; align-items: center;
+      justify-content: center; flex-shrink: 0;
+    }
+    .list-content { flex: 1; min-width: 0; }
+    .list-title { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .list-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 13px 20px; border-radius: var(--radius-sm); border: none;
+      font-family: var(--font); font-size: 15px; font-weight: 600;
+      cursor: pointer; transition: opacity 0.15s, transform 0.15s; width: 100%;
+      justify-content: center;
+    }
+    .btn:active { opacity: 0.8; transform: scale(0.98); }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-light { background: var(--primary-light); color: var(--primary); }
+    .btn-ghost { background: transparent; color: var(--text-muted); font-weight: 400; }
+    .btn-sm { padding: 7px 14px; font-size: 13px; border-radius: 8px; width: auto; }
+
+    /* Forms */
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: 13px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; }
+    input, textarea, select {
+      width: 100%; padding: 12px 14px; border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm); font-family: var(--font); font-size: 15px;
+      color: var(--text); background: var(--surface); outline: none;
+      transition: border-color 0.15s; appearance: none;
+    }
+    input:focus, textarea:focus, select:focus { border-color: var(--primary); }
+    textarea { resize: vertical; min-height: 90px; line-height: 1.5; }
+    .row-2 { display: flex; gap: 10px; }
+    .row-2 > * { flex: 1; }
+
+    /* Badge */
+    .badge {
+      display: inline-block; padding: 3px 10px; border-radius: 20px;
+      font-size: 11px; font-weight: 700;
+    }
+    .badge-blue { background: var(--primary-light); color: var(--primary); }
+    .badge-green { background: #d1fae5; color: #065f46; }
+    .badge-yellow { background: #fef9c3; color: #854d0e; }
+
+    /* FAB */
+    .fab {
+      position: fixed; bottom: calc(var(--nav-h) + 16px); right: 20px;
+      width: 56px; height: 56px; background: var(--primary); color: white;
+      border: none; border-radius: 50%; font-size: 28px; cursor: pointer;
+      box-shadow: 0 4px 18px rgba(37,99,235,0.38);
+      display: flex; align-items: center; justify-content: center; z-index: 50;
+    }
+    .fab:active { transform: scale(0.92); }
+
+    /* Chat */
+    .chat-messages {
+      padding: 16px; display: flex; flex-direction: column; gap: 10px;
+      padding-bottom: calc(var(--nav-h) + 76px); min-height: 100vh;
+    }
+    .msg { max-width: 82%; }
+    .msg-user { align-self: flex-end; }
+    .msg-ai { align-self: flex-start; }
+    .msg-bubble {
+      padding: 10px 14px; font-size: 15px; line-height: 1.55;
+      border-radius: 18px; word-break: break-word;
+    }
+    .msg-user .msg-bubble { background: var(--primary); color: white; border-bottom-right-radius: 4px; }
+    .msg-ai .msg-bubble { background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+    .chat-bar {
+      position: fixed; bottom: var(--nav-h); left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 430px; padding: 10px 14px;
+      background: var(--surface); border-top: 1px solid var(--border);
+      display: flex; gap: 8px; align-items: flex-end; z-index: 60;
+    }
+    .chat-bar textarea {
+      flex: 1; min-height: 40px; max-height: 110px; padding: 9px 12px;
+      border-radius: 20px; font-size: 15px; resize: none;
+    }
+    .send-btn {
+      width: 40px; height: 40px; border-radius: 50%; border: none;
+      background: var(--primary); color: white; cursor: pointer; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .send-btn:active { opacity: 0.8; }
+
+    /* Typing indicator */
+    .typing { display: flex; gap: 5px; padding: 4px 0; }
+    .typing span {
+      width: 8px; height: 8px; background: var(--text-muted);
+      border-radius: 50%; animation: bounce 1.1s infinite;
+    }
+    .typing span:nth-child(2) { animation-delay: 0.18s; }
+    .typing span:nth-child(3) { animation-delay: 0.36s; }
+    @keyframes bounce {
+      0%,60%,100% { transform: translateY(0); }
+      30% { transform: translateY(-7px); }
+    }
+
+    /* Plan / Todos */
+    .progress-bar { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; margin-top: 6px; }
+    .progress-fill { height: 100%; background: var(--primary); border-radius: 3px; transition: width 0.3s; }
+    .todo-item { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .todo-item:last-child { border-bottom: none; }
+    .check-box {
+      width: 22px; height: 22px; border: 2px solid var(--border); border-radius: 6px;
+      flex-shrink: 0; cursor: pointer; display: flex; align-items: center;
+      justify-content: center; margin-top: 1px; transition: all 0.15s; background: white;
+    }
+    .check-box.done { background: var(--primary); border-color: var(--primary); }
+    .todo-text { flex: 1; }
+    .todo-title { font-size: 14px; font-weight: 500; }
+    .todo-title.crossed { text-decoration: line-through; color: var(--text-muted); font-weight: 400; }
+    .todo-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .del-btn { background: none; border: none; color: var(--border); cursor: pointer; padding: 2px 4px; font-size: 16px; }
+    .del-btn:hover { color: var(--danger); }
+
+    /* Modal */
+    .overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.46);
+      z-index: 200; align-items: flex-end; justify-content: center;
+    }
+    .overlay.open { display: flex; }
+    .sheet {
+      background: var(--surface); border-radius: var(--radius) var(--radius) 0 0;
+      padding: 0 20px 32px; width: 100%; max-width: 430px; max-height: 92vh;
+      overflow-y: auto;
+    }
+    .sheet-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 14px auto 20px; }
+    .sheet-title { font-size: 19px; font-weight: 700; margin-bottom: 18px; }
+
+    /* Empty state */
+    .empty { text-align: center; padding: 48px 24px; color: var(--text-muted); }
+    .empty-icon { font-size: 50px; margin-bottom: 14px; }
+    .empty h3 { font-size: 17px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+    .empty p { font-size: 14px; line-height: 1.5; }
+
+    /* Settings item */
+    .settings-item { padding: 14px 0; border-bottom: 1px solid var(--border); }
+    .settings-item:last-child { border-bottom: none; }
+    .settings-label { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .settings-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
+
+    /* Snackbar */
+    .snackbar {
+      position: fixed; bottom: calc(var(--nav-h) + 12px); left: 50%;
+      transform: translateX(-50%) translateY(16px);
+      background: #0f172a; color: white; padding: 10px 22px; border-radius: 24px;
+      font-size: 14px; font-weight: 500; opacity: 0; transition: all 0.25s; z-index: 400;
+      white-space: nowrap;
+    }
+    .snackbar.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* Bericht card */
+    .bericht-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .bericht-actions { display: flex; gap: 6px; }
+    .bericht-section { margin-bottom: 12px; }
+    .bericht-section:last-child { margin-bottom: 0; }
+    .bericht-text { font-size: 14px; line-height: 1.65; color: var(--text); }
+
+    /* KI loading */
+    .ki-loading { text-align: center; padding: 32px 20px; }
+    .ki-loading p { font-size: 14px; color: var(--text-muted); margin-top: 14px; }
+  </style>
+</head>
+<body>
+
+<!-- ── SCREEN: HOME ─────────────────────────────────────────────────────────── -->
+<div id="screen-home" class="screen active">
+  <div class="header">
+    <h1 id="home-greeting">Guten Morgen 👋</h1>
+    <p>Dein persönlicher Ausbildungsbegleiter</p>
+  </div>
+  <div class="content">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-berichte">0</div>
+        <div class="stat-label">Berichte</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-ziele">0%</div>
+        <div class="stat-label">Ziele erreicht</div>
+      </div>
+    </div>
+
+    <div class="section-title">Schnellzugriff</div>
+    <div class="card" style="padding: 4px 16px;">
+      <div class="list-item" onclick="navigate('berichtsheft'); setTimeout(openNewBericht,50)">
+        <div class="list-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" width="22" height="22"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </div>
+        <div class="list-content">
+          <div class="list-title">Neuer Bericht</div>
+          <div class="list-sub">Wochenbericht schreiben</div>
+        </div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2" width="16" height="16"><path d="m9 18 6-6-6-6"/></svg>
+      </div>
+      <div class="list-item" onclick="navigate('chat')">
+        <div class="list-icon" style="background:#d1fae5">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" width="22" height="22"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <div class="list-content">
+          <div class="list-title">KI-Assistent</div>
+          <div class="list-sub">Fragen zur Ausbildung stellen</div>
+        </div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2" width="16" height="16"><path d="m9 18 6-6-6-6"/></svg>
+      </div>
+      <div class="list-item" onclick="navigate('plan')">
+        <div class="list-icon" style="background:#fef3c7">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" width="22" height="22"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        </div>
+        <div class="list-content">
+          <div class="list-title">Ausbildungsplan</div>
+          <div class="list-sub">Lernziele verwalten</div>
+        </div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2" width="16" height="16"><path d="m9 18 6-6-6-6"/></svg>
+      </div>
+    </div>
+
+    <div class="section-title" style="margin-top:4px">Letzte Berichte</div>
+    <div id="home-recent"></div>
+  </div>
+</div>
+
+<!-- ── SCREEN: BERICHTSHEFT ─────────────────────────────────────────────────── -->
+<div id="screen-berichtsheft" class="screen">
+  <div class="header">
+    <div class="header-row">
+      <div>
+        <h1>Berichtsheft</h1>
+        <p>Deine Wochenberichte</p>
+      </div>
+    </div>
+  </div>
+  <div class="content" id="bericht-list"></div>
+  <button class="fab" onclick="openNewBericht()">+</button>
+</div>
+
+<!-- ── SCREEN: CHAT ─────────────────────────────────────────────────────────── -->
+<div id="screen-chat" class="screen">
+  <div class="header">
+    <h1>KI-Assistent</h1>
+    <p>Dein Azubi-Buddy</p>
+  </div>
+  <div class="chat-messages" id="chat-messages">
+    <div class="msg msg-ai">
+      <div class="msg-bubble">
+        Hallo! 👋 Ich bin dein Azubi-Buddy.<br><br>
+        Ich helfe dir bei Fragen zur Ausbildung, erkläre Fachbegriffe, und unterstütze dich beim Berichtsheft. Was kann ich für dich tun?
+      </div>
+    </div>
+  </div>
+  <div class="chat-bar">
+    <textarea id="chat-input" placeholder="Nachricht schreiben…" rows="1"
+      oninput="autoResize(this)" onkeydown="chatKey(event)"></textarea>
+    <button class="send-btn" onclick="sendChat()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" width="18" height="18"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- ── SCREEN: PLAN ─────────────────────────────────────────────────────────── -->
+<div id="screen-plan" class="screen">
+  <div class="header">
+    <h1>Ausbildungsplan</h1>
+    <p>Deine Lernziele im Überblick</p>
+  </div>
+  <div class="content" id="plan-list"></div>
+  <button class="fab" onclick="openNewZiel()">+</button>
+</div>
+
+<!-- ── BOTTOM NAV ───────────────────────────────────────────────────────────── -->
+<nav class="nav">
+  <button class="nav-item active" id="nav-home" onclick="navigate('home')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    Home
+  </button>
+  <button class="nav-item" id="nav-berichtsheft" onclick="navigate('berichtsheft')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+    Berichtsheft
+  </button>
+  <button class="nav-item" id="nav-chat" onclick="navigate('chat')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    KI-Chat
+  </button>
+  <button class="nav-item" id="nav-plan" onclick="navigate('plan')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+    Plan
+  </button>
+</nav>
+
+<!-- ── MODAL: NEUER BERICHT ─────────────────────────────────────────────────── -->
+<div class="overlay" id="modal-bericht">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="bericht-title">Neuer Wochenbericht</div>
+    <div class="form-group">
+      <label>Kalenderwoche &amp; Jahr</label>
+      <div class="row-2">
+        <input type="number" id="b-kw" placeholder="KW (z.B. 21)" min="1" max="53">
+        <input type="number" id="b-jahr" placeholder="Jahr" min="2020" max="2035">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Betrieb — Was habe ich gemacht?</label>
+      <textarea id="b-betrieb" placeholder="Stichpunkte oder ganzer Text…"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Berufsschule — Was haben wir gelernt?</label>
+      <textarea id="b-schule" placeholder="Stichpunkte oder ganzer Text…"></textarea>
+    </div>
+    <button class="btn btn-light" style="margin-bottom:10px" onclick="kiFormulierung()">
+      ✨ KI-Formulierungshilfe
+    </button>
+    <button class="btn btn-primary" onclick="saveBericht()" style="margin-bottom:8px">Speichern</button>
+    <button class="btn btn-ghost" onclick="closeModal('modal-bericht')">Abbrechen</button>
+  </div>
+</div>
+
+<!-- ── MODAL: NEUES ZIEL ────────────────────────────────────────────────────── -->
+<div class="overlay" id="modal-ziel">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Neues Lernziel</div>
+    <div class="form-group">
+      <label>Lernfeld / Bereich</label>
+      <input type="text" id="z-lernfeld" placeholder="z.B. LF5, Netzwerktechnik, Java…">
+    </div>
+    <div class="form-group">
+      <label>Ziel</label>
+      <input type="text" id="z-titel" placeholder="z.B. TCP/IP-Stack verstehen">
+    </div>
+    <div class="form-group">
+      <label>Details (optional)</label>
+      <textarea id="z-beschreibung" placeholder="Was genau möchtest du lernen oder erreichen?"></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="saveZiel()" style="margin-bottom:8px">Speichern</button>
+    <button class="btn btn-ghost" onclick="closeModal('modal-ziel')">Abbrechen</button>
+  </div>
+</div>
+
+<!-- ── MODAL: KI-FORMULIERUNG ──────────────────────────────────────────────── -->
+<div class="overlay" id="modal-ki">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">KI-Formulierungshilfe ✨</div>
+
+    <div id="ki-loading" class="ki-loading">
+      <div class="typing" style="justify-content:center"><span></span><span></span><span></span></div>
+      <p>KI formuliert deinen Bericht…</p>
+    </div>
+
+    <div id="ki-result" style="display:none">
+      <div class="form-group">
+        <label>Vorschlag – Betrieb</label>
+        <textarea id="ki-b-result" style="min-height:110px"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Vorschlag – Berufsschule</label>
+        <textarea id="ki-s-result" style="min-height:110px"></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="useKi()" style="margin-bottom:8px">✓ Übernehmen</button>
+    </div>
+
+    <div id="ki-error" style="display:none">
+      <p style="color:#ef4444;font-size:14px;margin-bottom:16px" id="ki-err-msg"></p>
+      <div class="form-group">
+        <label>Groq API-Key eingeben</label>
+        <input type="password" id="ki-apikey-input" placeholder="gsk_…">
+        <p style="font-size:12px;color:var(--text-muted);margin-top:6px">
+          Kostenlos unter <a href="https://console.groq.com" target="_blank" style="color:var(--primary)">console.groq.com</a>
+        </p>
+      </div>
+      <button class="btn btn-primary" onclick="saveKeyRetry()" style="margin-bottom:8px">Speichern &amp; nochmal versuchen</button>
+    </div>
+
+    <button class="btn btn-ghost" onclick="closeModal('modal-ki')">Schließen</button>
+  </div>
+</div>
+
+<!-- ── MODAL: SETTINGS ─────────────────────────────────────────────────────── -->
+<div class="overlay" id="modal-settings">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Einstellungen</div>
+    <div class="settings-item">
+      <div class="settings-label">Dein Name</div>
+      <input type="text" id="set-name" placeholder="z.B. Sam">
+    </div>
+    <div class="settings-item">
+      <div class="settings-label">Ausbildungsbetrieb</div>
+      <input type="text" id="set-betrieb" placeholder="z.B. AllgäuDSL GmbH">
+    </div>
+    <div class="settings-item">
+      <div class="settings-label">Ausbildungsberuf</div>
+      <input type="text" id="set-beruf" placeholder="z.B. IT-System-Elektroniker">
+    </div>
+    <div class="settings-item">
+      <div class="settings-label">Groq API-Key</div>
+      <div class="settings-sub">Für KI-Funktionen. Kostenlos unter console.groq.com</div>
+      <input type="password" id="set-apikey" placeholder="gsk_…">
+    </div>
+    <div style="margin-top:16px">
+      <button class="btn btn-primary" onclick="saveSettings()" style="margin-bottom:8px">Speichern</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-settings')">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Snackbar -->
+<div class="snackbar" id="snackbar"></div>
+
+<script>
+// ── Storage helpers ───────────────────────────────────────────────────────────
+const S = {
+  get: k => JSON.parse(localStorage.getItem(k) || 'null'),
+  set: (k,v) => localStorage.setItem(k, JSON.stringify(v))
+};
+const getSettings  = () => S.get('settings')  || {};
+const getBerichte  = () => S.get('berichte')  || [];
+const getZiele     = () => S.get('ziele')     || [];
+const saveBerichte = v => S.set('berichte', v);
+const saveZiele    = v => S.set('ziele', v);
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let currentScreen = 'home';
+let editingId = null;
+let chatHistory = [];
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function navigate(s) {
+  document.getElementById('screen-' + currentScreen).classList.remove('active');
+  document.getElementById('nav-' + currentScreen).classList.remove('active');
+  currentScreen = s;
+  document.getElementById('screen-' + s).classList.add('active');
+  document.getElementById('nav-' + s).classList.add('active');
+  if (s === 'home')         renderHome();
+  if (s === 'berichtsheft') renderBerichte();
+  if (s === 'plan')         renderPlan();
+}
+
+// ── HOME ──────────────────────────────────────────────────────────────────────
+function renderHome() {
+  const h = new Date().getHours();
+  const g = h < 12 ? 'Guten Morgen' : h < 18 ? 'Guten Tag' : 'Guten Abend';
+  const name = (getSettings().name || '').trim();
+  document.getElementById('home-greeting').textContent = g + (name ? ', ' + name : '') + ' 👋';
+
+  const berichte = getBerichte();
+  const ziele = getZiele();
+  const pct = ziele.length ? Math.round(ziele.filter(z=>z.done).length / ziele.length * 100) : 0;
+  document.getElementById('stat-berichte').textContent = berichte.length;
+  document.getElementById('stat-ziele').textContent = pct + '%';
+
+  const recent = berichte.slice(-3).reverse();
+  const el = document.getElementById('home-recent');
+  if (!recent.length) {
+    el.innerHTML = `<div class="card empty" style="padding:28px 16px">
+      <div class="empty-icon">📄</div>
+      <h3>Noch keine Berichte</h3>
+      <p>Erstelle deinen ersten Wochenbericht</p>
+    </div>`;
+    return;
+  }
+  el.innerHTML = `<div class="card" style="padding:4px 16px">${recent.map(b => `
+    <div class="list-item" onclick="navigate('berichtsheft')">
+      <div class="list-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" width="20" height="20"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      </div>
+      <div class="list-content">
+        <div class="list-title">KW ${b.kw} / ${b.jahr}</div>
+        <div class="list-sub">${esc(b.betrieb).substring(0,55)}${b.betrieb.length>55?'…':''}</div>
+      </div>
+    </div>`).join('')}</div>`;
+}
+
+// ── BERICHTSHEFT ──────────────────────────────────────────────────────────────
+function renderBerichte() {
+  const list = getBerichte().slice().reverse();
+  const el = document.getElementById('bericht-list');
+  if (!list.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><h3>Noch keine Berichte</h3><p>Tippe auf + um deinen ersten Bericht zu erstellen.</p></div>`;
+    return;
+  }
+  el.innerHTML = list.map(b => `
+    <div class="card">
+      <div class="bericht-card-header">
+        <span class="badge badge-blue">KW ${b.kw} / ${b.jahr}</span>
+        <div class="bericht-actions">
+          <button class="btn btn-sm btn-light" onclick="editBericht('${b.id}')">Bearbeiten</button>
+          <button class="btn btn-sm" style="color:var(--danger);background:none;border:none;cursor:pointer" onclick="delBericht('${b.id}')">Löschen</button>
+        </div>
+      </div>
+      <div class="bericht-section">
+        <div class="section-title">Betrieb</div>
+        <p class="bericht-text">${esc(b.betrieb).replace(/\n/g,'<br>')}</p>
+      </div>
+      <div class="bericht-section">
+        <div class="section-title">Berufsschule</div>
+        <p class="bericht-text">${esc(b.schule).replace(/\n/g,'<br>')}</p>
+      </div>
+    </div>`).join('');
+}
+
+function openNewBericht() {
+  editingId = null;
+  document.getElementById('bericht-title').textContent = 'Neuer Wochenbericht';
+  const now = new Date();
+  document.getElementById('b-kw').value    = getKW(now);
+  document.getElementById('b-jahr').value  = now.getFullYear();
+  document.getElementById('b-betrieb').value = '';
+  document.getElementById('b-schule').value  = '';
+  openModal('modal-bericht');
+}
+
+function editBericht(id) {
+  const b = getBerichte().find(x=>x.id===id);
+  if (!b) return;
+  editingId = id;
+  document.getElementById('bericht-title').textContent = 'Bericht bearbeiten';
+  document.getElementById('b-kw').value    = b.kw;
+  document.getElementById('b-jahr').value  = b.jahr;
+  document.getElementById('b-betrieb').value = b.betrieb;
+  document.getElementById('b-schule').value  = b.schule;
+  openModal('modal-bericht');
+}
+
+function saveBericht() {
+  const kw     = +document.getElementById('b-kw').value;
+  const jahr   = +document.getElementById('b-jahr').value;
+  const betrieb = document.getElementById('b-betrieb').value.trim();
+  const schule  = document.getElementById('b-schule').value.trim();
+  if (!kw || !jahr || !betrieb || !schule) { toast('Bitte alle Felder ausfüllen'); return; }
+  const list = getBerichte();
+  if (editingId) {
+    const i = list.findIndex(b=>b.id===editingId);
+    if (i>=0) list[i] = {...list[i], kw, jahr, betrieb, schule};
+  } else {
+    list.push({ id: Date.now().toString(), kw, jahr, betrieb, schule, ts: Date.now() });
+  }
+  saveBerichte(list);
+  closeModal('modal-bericht');
+  renderBerichte();
+  toast('Bericht gespeichert ✓');
+}
+
+function delBericht(id) {
+  if (!confirm('Bericht wirklich löschen?')) return;
+  saveBerichte(getBerichte().filter(b=>b.id!==id));
+  renderBerichte();
+  toast('Bericht gelöscht');
+}
+
+// ── PLAN ──────────────────────────────────────────────────────────────────────
+function renderPlan() {
+  const ziele = getZiele();
+  const el = document.getElementById('plan-list');
+  if (!ziele.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">🎯</div><h3>Noch keine Lernziele</h3><p>Tippe auf + um dein erstes Lernziel hinzuzufügen.</p></div>`;
+    return;
+  }
+  const groups = {};
+  ziele.forEach(z => { if(!groups[z.lf]) groups[z.lf]=[]; groups[z.lf].push(z); });
+  el.innerHTML = Object.entries(groups).map(([lf, items]) => {
+    const done = items.filter(i=>i.done).length;
+    const pct  = Math.round(done/items.length*100);
+    return `<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <strong style="font-size:15px">${esc(lf)}</strong>
+        <span style="font-size:12px;color:var(--text-muted)">${done}/${items.length}</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+      <div style="margin-top:12px">
+        ${items.map(z=>`
+          <div class="todo-item">
+            <div class="check-box ${z.done?'done':''}" onclick="toggleZ('${z.id}')">
+              ${z.done?'<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" width="13" height="13"><polyline points="20 6 9 17 4 12"/></svg>':''}
+            </div>
+            <div class="todo-text">
+              <div class="todo-title ${z.done?'crossed':''}">${esc(z.titel)}</div>
+              ${z.beschr?`<div class="todo-sub">${esc(z.beschr)}</div>`:''}
+            </div>
+            <button class="del-btn" onclick="delZ('${z.id}')">✕</button>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openNewZiel() {
+  document.getElementById('z-lernfeld').value   = '';
+  document.getElementById('z-titel').value      = '';
+  document.getElementById('z-beschreibung').value = '';
+  openModal('modal-ziel');
+}
+
+function saveZiel() {
+  const lf    = document.getElementById('z-lernfeld').value.trim();
+  const titel = document.getElementById('z-titel').value.trim();
+  const beschr = document.getElementById('z-beschreibung').value.trim();
+  if (!lf || !titel) { toast('Bitte Lernfeld und Ziel ausfüllen'); return; }
+  const list = getZiele();
+  list.push({ id: Date.now().toString(), lf, titel, beschr, done: false, ts: Date.now() });
+  saveZiele(list);
+  closeModal('modal-ziel');
+  renderPlan();
+  toast('Lernziel gespeichert ✓');
+}
+
+function toggleZ(id) {
+  const list = getZiele();
+  const z = list.find(x=>x.id===id);
+  if (z) z.done = !z.done;
+  saveZiele(list);
+  renderPlan();
+}
+
+function delZ(id) {
+  saveZiele(getZiele().filter(z=>z.id!==id));
+  renderPlan();
+}
+
+// ── CHAT ──────────────────────────────────────────────────────────────────────
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 110) + 'px';
+}
+function chatKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+}
+
+async function sendChat() {
+  const inp = document.getElementById('chat-input');
+  const text = inp.value.trim();
+  if (!text) return;
+  inp.value = ''; inp.style.height = 'auto';
+  addMsg('user', text);
+  chatHistory.push({ role: 'user', content: text });
+  const typer = addTyper();
+  try {
+    const key = getSettings().groq_api_key;
+    if (!key) throw new Error('Kein API-Key gespeichert. Bitte in den Einstellungen einen Groq API-Key hinterlegen.');
+    const settings = getSettings();
+    const system = `Du bist AzubiBuddy, ein freundlicher KI-Assistent für deutsche Azubis.${settings.beruf ? ` Der Azubi macht eine Ausbildung zum ${settings.beruf}.` : ''}${settings.betrieb ? ` Ausbildungsbetrieb: ${settings.betrieb}.` : ''} Antworte immer auf Deutsch, klar und praxisnah. Hilf bei Fachfragen, Berichtsheft, Lernstoff und Ausbildungsalltag.`;
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role:'system', content: system }, ...chatHistory.slice(-12)],
+        max_tokens: 600
+      })
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || 'API Fehler ' + res.status); }
+    const data = await res.json();
+    const reply = data.choices[0].message.content;
+    typer.remove();
+    addMsg('ai', reply);
+    chatHistory.push({ role: 'assistant', content: reply });
+  } catch(e) {
+    typer.remove();
+    addMsg('ai', '❌ ' + e.message);
+  }
+}
+
+function addMsg(role, text) {
+  const c = document.getElementById('chat-messages');
+  const d = document.createElement('div');
+  d.className = `msg msg-${role}`;
+  d.innerHTML = `<div class="msg-bubble">${esc(text).replace(/\n/g,'<br>')}</div>`;
+  c.appendChild(d);
+  d.scrollIntoView({ behavior:'smooth', block:'end' });
+  return d;
+}
+
+function addTyper() {
+  const c = document.getElementById('chat-messages');
+  const d = document.createElement('div');
+  d.className = 'msg msg-ai';
+  d.innerHTML = `<div class="msg-bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
+  c.appendChild(d);
+  d.scrollIntoView({ behavior:'smooth', block:'end' });
+  return d;
+}
+
+// ── KI-FORMULIERUNG ───────────────────────────────────────────────────────────
+async function kiFormulierung() {
+  const betrieb = document.getElementById('b-betrieb').value.trim();
+  const schule  = document.getElementById('b-schule').value.trim();
+  if (!betrieb && !schule) { toast('Bitte zuerst Stichpunkte eingeben'); return; }
+  show('ki-loading'); hide('ki-result'); hide('ki-error');
+  openModal('modal-ki');
+  try {
+    const key = getSettings().groq_api_key;
+    if (!key) throw new Error('Kein Groq API-Key gespeichert.');
+    const settings = getSettings();
+    const beruf = settings.beruf || 'IT-System-Elektroniker';
+    const prompt = `Formuliere einen professionellen Berichtsheft-Eintrag für einen deutschen Azubi (${beruf}).
+
+Betrieb-Stichpunkte: ${betrieb || 'keine'}
+Berufsschule-Stichpunkte: ${schule || 'keine'}
+
+Antworte NUR mit JSON (kein Markdown):
+{"betrieb":"vollständiger Text für den Betrieb","schule":"vollständiger Text für die Berufsschule"}`;
+
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role:'user', content: prompt }],
+        max_tokens: 700
+      })
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || 'API Fehler ' + res.status); }
+    const data = await res.json();
+    const raw = data.choices[0].message.content.replace(/```json|```/g,'').trim();
+    const p = JSON.parse(raw);
+    document.getElementById('ki-b-result').value = p.betrieb || '';
+    document.getElementById('ki-s-result').value = p.schule  || '';
+    hide('ki-loading'); show('ki-result');
+  } catch(e) {
+    hide('ki-loading');
+    document.getElementById('ki-err-msg').textContent = e.message;
+    show('ki-error');
+  }
+}
+
+function useKi() {
+  document.getElementById('b-betrieb').value = document.getElementById('ki-b-result').value;
+  document.getElementById('b-schule').value  = document.getElementById('ki-s-result').value;
+  closeModal('modal-ki');
+  toast('KI-Vorschlag übernommen ✓');
+}
+
+function saveKeyRetry() {
+  const key = document.getElementById('ki-apikey-input').value.trim();
+  if (!key) { toast('API-Key darf nicht leer sein'); return; }
+  const s = getSettings(); s.groq_api_key = key; S.set('settings', s);
+  closeModal('modal-ki');
+  kiFormulierung();
+}
+
+// ── SETTINGS ──────────────────────────────────────────────────────────────────
+function openSettings() {
+  const s = getSettings();
+  document.getElementById('set-name').value    = s.name    || '';
+  document.getElementById('set-betrieb').value = s.betrieb || '';
+  document.getElementById('set-beruf').value   = s.beruf   || '';
+  document.getElementById('set-apikey').value  = s.groq_api_key || '';
+  openModal('modal-settings');
+}
+
+function saveSettings() {
+  const s = {
+    name:         document.getElementById('set-name').value.trim(),
+    betrieb:      document.getElementById('set-betrieb').value.trim(),
+    beruf:        document.getElementById('set-beruf').value.trim(),
+    groq_api_key: document.getElementById('set-apikey').value.trim()
+  };
+  S.set('settings', s);
+  closeModal('modal-settings');
+  renderHome();
+  toast('Einstellungen gespeichert ✓');
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function show(id) { document.getElementById(id).style.display = 'block'; }
+function hide(id) { document.getElementById(id).style.display = 'none'; }
+
+function toast(msg) {
+  const el = document.getElementById('snackbar');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+function esc(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function getKW(d) {
+  const dt = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  dt.setUTCDate(dt.getUTCDate() + 4 - (dt.getUTCDay() || 7));
+  const y = new Date(Date.UTC(dt.getUTCFullYear(), 0, 1));
+  return Math.ceil((((dt - y) / 86400000) + 1) / 7);
+}
+
+// Close modals when tapping backdrop
+document.querySelectorAll('.overlay').forEach(o => {
+  o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
+});
+
+// Gear icon in nav for settings — inject into home header
+document.querySelector('#screen-home .header').insertAdjacentHTML('beforeend',
+  `<button onclick="openSettings()" style="position:absolute;right:16px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:6px;color:var(--text-muted)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+  </button>`
+);
+document.querySelector('#screen-home .header').style.position = 'relative';
+
+// PWA
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+// Init
+renderHome();
+</script>
+</body>
+</html>
