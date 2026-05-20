@@ -680,9 +680,15 @@
       </div>
     </div>
     <div class="settings-item">
-      <div class="settings-label">Groq API-Key</div>
-      <div class="settings-sub">Für KI-Funktionen. Kostenlos unter console.groq.com</div>
-      <input type="password" id="set-apikey" placeholder="gsk_…">
+      <div class="settings-label">KI-Anbieter</div>
+      <div class="settings-sub">Wähle deinen KI-Dienst – Groq und Gemini sind kostenlos</div>
+      <select id="set-provider" onchange="onProviderChange()" style="margin-bottom:8px">
+        <option value="groq">Groq (kostenlos) – console.groq.com</option>
+        <option value="gemini">Google Gemini (kostenlos) – aistudio.google.com</option>
+        <option value="anthropic">Anthropic Claude – console.anthropic.com</option>
+      </select>
+      <input type="password" id="set-apikey" placeholder="API-Key eingeben…">
+      <p id="provider-hint" style="font-size:12px;color:var(--text-muted);margin-top:6px"></p>
     </div>
     <div style="margin-top:16px">
       <button class="btn btn-primary" onclick="saveSettings()" style="margin-bottom:8px">Speichern</button>
@@ -691,9 +697,6 @@
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.4/pizzip.min.js" onerror="console.warn('PizZip konnte nicht geladen werden')"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.44.0/docxtemplater.js" onerror="console.warn('Docxtemplater konnte nicht geladen werden')"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js" onerror="console.warn('FileSaver konnte nicht geladen werden')"></script>
 
 <script>
 // ── Storage helpers ───────────────────────────────────────────────────────────
@@ -993,6 +996,56 @@ function chatKey(e) {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
 }
 
+async function callAI(messages, maxTokens = 600) {
+  const s = getSettings();
+  const provider = s.ai_provider || 'groq';
+  // backward compatibility: alte Einstellung groq_api_key auch akzeptieren
+  const key = s.ai_apikey || s.groq_api_key || '';
+  if (!key) throw new Error('Kein API-Key gespeichert. Bitte in den Einstellungen einen KI-Anbieter und API-Key eintragen.');
+
+  if (provider === 'groq') {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+      body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages, max_tokens: maxTokens })
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || 'Groq Fehler ' + res.status); }
+    const d = await res.json();
+    return d.choices[0].message.content;
+  }
+
+  if (provider === 'gemini') {
+    const contents = messages.filter(m => m.role !== 'system').map(m => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }]
+    }));
+    const systemMsg = messages.find(m => m.role === 'system');
+    const body = { contents, generationConfig: { maxOutputTokens: maxTokens } };
+    if (systemMsg) body.systemInstruction = { parts: [{ text: systemMsg.content }] };
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || 'Gemini Fehler ' + res.status); }
+    const d = await res.json();
+    return d.candidates[0].content.parts[0].text;
+  }
+
+  if (provider === 'anthropic') {
+    const systemMsg = messages.find(m => m.role === 'system');
+    const filtered  = messages.filter(m => m.role !== 'system');
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: maxTokens, system: systemMsg?.content || '', messages: filtered })
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || 'Anthropic Fehler ' + res.status); }
+    const d = await res.json();
+    return d.content[0].text;
+  }
+
+  throw new Error('Unbekannter KI-Anbieter: ' + provider);
+}
+
 async function sendChat() {
   const inp = document.getElementById('chat-input');
   const text = inp.value.trim();
@@ -1002,22 +1055,9 @@ async function sendChat() {
   chatHistory.push({ role: 'user', content: text });
   const typer = addTyper();
   try {
-    const key = getSettings().groq_api_key;
-    if (!key) throw new Error('Kein API-Key gespeichert. Bitte in den Einstellungen einen Groq API-Key hinterlegen.');
-    const settings = getSettings();
-    const system = `Du bist AzubiBuddy, ein freundlicher KI-Assistent für deutsche Azubis.${settings.beruf ? ` Der Azubi macht eine Ausbildung zum ${settings.beruf}.` : ''}${settings.betrieb ? ` Ausbildungsbetrieb: ${settings.betrieb}.` : ''} Antworte immer auf Deutsch, klar und praxisnah. Hilf bei Fachfragen, Berichtsheft, Lernstoff und Ausbildungsalltag.`;
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [{ role:'system', content: system }, ...chatHistory.slice(-12)],
-        max_tokens: 600
-      })
-    });
-    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || 'API Fehler ' + res.status); }
-    const data = await res.json();
-    const reply = data.choices[0].message.content;
+    const s = getSettings();
+    const system = `Du bist AzubiBuddy, ein freundlicher KI-Assistent für deutsche Azubis.${s.beruf ? ` Ausbildungsberuf: ${s.beruf}.` : ''}${s.betrieb ? ` Betrieb: ${s.betrieb}.` : ''} Antworte auf Deutsch, klar und praxisnah. Hilf bei Fachfragen, Berichtsheft, Lernstoff und Ausbildungsalltag.`;
+    const reply = await callAI([{ role:'system', content: system }, ...chatHistory.slice(-12)], 600);
     typer.remove();
     addMsg('ai', reply);
     chatHistory.push({ role: 'assistant', content: reply });
@@ -1128,21 +1168,9 @@ Antworte NUR mit diesem JSON (kein Markdown, keine Erklärungen):
 {"betrieb":"vollständiger Betriebstext","schule":"vollständiger Schultext"}`;
 
   try {
-    const key = getSettings().groq_api_key;
-    if (!key) throw new Error('Kein Groq API-Key gespeichert.');
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [{ role:'user', content: prompt }],
-        max_tokens: 900
-      })
-    });
-    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || 'API Fehler ' + res.status); }
-    const data = await res.json();
-    const raw = data.choices[0].message.content.replace(/```json|```/g,'').trim();
-    const p = JSON.parse(raw);
+    const raw = await callAI([{ role:'user', content: prompt }], 900);
+    const cleaned = raw.replace(/```json|```/g,'').trim();
+    const p = JSON.parse(cleaned);
     document.getElementById('ki-b-result').value = p.betrieb || '';
     document.getElementById('ki-s-result').value = p.schule  || '';
     hide('ki-loading'); show('ki-result');
@@ -1154,8 +1182,7 @@ Antworte NUR mit diesem JSON (kein Markdown, keine Erklärungen):
 }
 
 function useKi() {
-  const form = document.getElementById('b-form').value;
-  const isTages = form === 'tages' || form === 'tages7';
+  const isTages = currentBerichtsform === 'tages' || currentBerichtsform === 'tages7';
   const betriebText = document.getElementById('ki-b-result').value;
   const schuleText  = document.getElementById('ki-s-result').value;
   if (isTages) {
@@ -1182,95 +1209,83 @@ function useKi() {
 function saveKeyRetry() {
   const key = document.getElementById('ki-apikey-input').value.trim();
   if (!key) { toast('API-Key darf nicht leer sein'); return; }
-  const s = getSettings(); s.groq_api_key = key; S.set('settings', s);
+  const s = getSettings(); s.ai_apikey = key; S.set('settings', s);
   closeModal('modal-ki');
   kiFormulierung();
 }
 
 // ── WORD EXPORT (kein CDN nötig) ─────────────────────────────────────────────
-function exportWord(id) {
+// ── WORD EXPORT ───────────────────────────────────────────────────────────────
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    if (window._loadedScripts && window._loadedScripts[src]) { resolve(); return; }
+    const el = document.createElement('script');
+    el.src = src;
+    el.onload = () => { window._loadedScripts = window._loadedScripts || {}; window._loadedScripts[src] = true; resolve(); };
+    el.onerror = () => reject(new Error('Konnte nicht laden: ' + src));
+    document.head.appendChild(el);
+  });
+}
+
+async function exportWord(id) {
   const b = getBerichte().find(x => x.id === id);
   if (!b) return;
-  const s = getSettings();
-
-  // Build day rows for Tagesberichte
-  const days = [
-    ['Montag',     b.tage?.mo],
-    ['Dienstag',   b.tage?.di],
-    ['Mittwoch',   b.tage?.mi],
-    ['Donnerstag', b.tage?.do],
-    ['Freitag',    b.tage?.fr],
-    ['Samstag',    b.tage?.sa],
-    ['Sonntag',    b.tage?.so],
-  ].filter(([,v]) => v);
-
-  const isTages = days.length > 0;
-
-  let betriebHtml = '';
-  if (isTages) {
-    betriebHtml = days.map(([tag, inhalt]) =>
-      `<p><strong>${tag}:</strong><br>${(inhalt||'').replace(/\n/g,'<br>')}</p>`
-    ).join('');
-  } else {
-    betriebHtml = `<p>${(b.betrieb||'').replace(/\n/g,'<br>')}</p>`;
+  const tmplB64 = localStorage.getItem('vorlage_docx');
+  if (!tmplB64) {
+    if (confirm('Noch keine Word-Vorlage hinterlegt.\n\nGehe zu Einstellungen → "Vorlage hochladen" und lade deine IHK-Vorlage (.docx) hoch.\n\nJetzt zu den Einstellungen?')) openSettings();
+    return;
   }
+  toast('Word wird vorbereitet…');
+  try {
+    await loadScript('https://cdn.jsdelivr.net/npm/pizzip@3.1.4/dist/pizzip.min.js');
+    await loadScript('https://cdn.jsdelivr.net/npm/docxtemplater@3.44.0/build/docxtemplater.js');
+    await loadScript('https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js');
+    generateDocx(b, tmplB64);
+  } catch(e) {
+    console.warn('Docxtemplater nicht verfügbar, Fallback RTF:', e);
+    exportRTF(b);
+  }
+}
 
-  const html = `
-<html xmlns:o='urn:schemas-microsoft-com:office:office'
-      xmlns:w='urn:schemas-microsoft-com:office:word'
-      xmlns='http://www.w3.org/TR/REC-html40'>
-<head>
-<meta charset='utf-8'>
-<style>
-  body { font-family: Arial, sans-serif; font-size: 11pt; margin: 2cm; }
-  h1 { font-size: 14pt; color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 6px; }
-  h2 { font-size: 11pt; color: #374151; margin-top: 16px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
-  table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
-  td { padding: 6px 10px; border: 1px solid #d1d5db; font-size: 10pt; }
-  td.label { background: #f3f4f6; font-weight: bold; width: 160px; }
-  p { margin: 4px 0; line-height: 1.6; }
-</style>
-</head>
-<body>
-<h1>Ausbildungsnachweis</h1>
-<table>
-  <tr><td class="label">Name</td><td>${s.name || ''}</td></tr>
-  <tr><td class="label">Ausbildungsbetrieb</td><td>${s.betrieb || ''}</td></tr>
-  <tr><td class="label">Ausbildungsberuf</td><td>${s.beruf || ''}</td></tr>
-  <tr><td class="label">Kalenderwoche</td><td>KW ${b.kw} / ${b.jahr}</td></tr>
-  <tr><td class="label">Berichtsform</td><td>${FORM_LABELS[b.form] || 'Wochenbericht'}</td></tr>
-</table>
-
-<h2>Betriebliche Tätigkeit</h2>
-${betriebHtml}
-
-<h2>Berufsschule</h2>
-<p>${(b.schule||'').replace(/\n/g,'<br>')}</p>
-
-<br><br>
-<table>
-  <tr>
-    <td style="width:50%;border:none;padding:0">
-      <p style="margin-top:40px;border-top:1px solid #000;padding-top:4px">Datum, Unterschrift Auszubildender</p>
-    </td>
-    <td style="width:50%;border:none;padding:0 0 0 40px">
-      <p style="margin-top:40px;border-top:1px solid #000;padding-top:4px">Datum, Unterschrift Ausbilder</p>
-    </td>
-  </tr>
-</table>
-</body>
-</html>`;
-
-  const blob = new Blob([html], { type: 'application/msword' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = `Berichtsheft_KW${b.kw}_${b.jahr}.doc`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  toast('Word-Datei wird heruntergeladen ✓');
+function exportRTF(b) {
+  const s = getSettings();
+  const days = [
+    ['Montag', b.tage?.mo], ['Dienstag', b.tage?.di], ['Mittwoch', b.tage?.mi],
+    ['Donnerstag', b.tage?.do], ['Freitag', b.tage?.fr]
+  ].filter(([,v]) => v);
+  const isTages = days.length > 0;
+  let betriebContent = '';
+  if (isTages) {
+    betriebContent = days.map(([tag, v]) => `\\b ${tag}:\\b0\\line ${(v||'').replace(/\n/g,'\\line ')}`).join('\\par ');
+  } else {
+    betriebContent = (b.betrieb||'').replace(/\n/g,'\\line ');
+  }
+  const rtf = `{\\rtf1\\ansi\\deff0
+{\\fonttbl{\\f0 Arial;}}
+{\\colortbl ;\\red37\\green99\\blue235;}
+\\f0\\fs22
+\\cf1\\b\\fs28 Ausbildungsnachweis\\cf0\\b0\\fs22
+\\par\\line
+{\\b Name:} ${s.name||''}\\tab{\\b KW:} ${b.kw} / ${b.jahr}
+\\par {\\b Ausbildungsbetrieb:} ${s.betrieb||''}
+\\par {\\b Ausbildungsberuf:} ${s.beruf||''}
+\\par\\line
+\\cf1\\b BETRIEBLICHE T\\u196?TIGKEIT\\cf0\\b0
+\\par ${betriebContent}
+\\par\\line
+\\cf1\\b BERUFSSCHULE\\cf0\\b0
+\\par ${(b.schule||'').replace(/\n/g,'\\line ')}
+\\par\\line\\line\\line
+_________________________\\tab\\tab _________________________
+\\par Datum, Unterschrift Auszubildender\\tab Datum, Unterschrift Ausbilder
+}`;
+  const blob = new Blob([rtf], { type: 'application/rtf' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `Berichtsheft_KW${b.kw}_${b.jahr}.rtf`;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+  toast('RTF-Datei heruntergeladen – öffnet sich in Word ✓');
 }
 
 function openTemplateUpload(pendingId) {
@@ -1385,6 +1400,18 @@ function removeTemplate() {
   document.getElementById('tmpl-status').style.color = 'var(--text-muted)';
   toast('Vorlage entfernt');
 }
+function onProviderChange() {
+  const p = document.getElementById('set-provider').value;
+  const hints = {
+    groq:      '🟢 Kostenlos · Key von console.groq.com · Empfohlen',
+    gemini:    '🟢 Kostenlos · Key von aistudio.google.com · 1500 Anfragen/Tag',
+    anthropic: '🟡 Kostenpflichtig · Key von console.anthropic.com'
+  };
+  document.getElementById('provider-hint').textContent = hints[p] || '';
+  const placeholders = { groq: 'gsk_…', gemini: 'AIza…', anthropic: 'sk-ant-…' };
+  document.getElementById('set-apikey').placeholder = placeholders[p] || 'API-Key…';
+}
+
 function openSettings() {
   const s = getSettings();
   document.getElementById('set-name').value         = s.name         || '';
@@ -1393,11 +1420,15 @@ function openSettings() {
   document.getElementById('set-berichtsform').value = s.berichtsform || 'wochen';
   document.getElementById('set-darstellung').value  = s.darstellung  || 'stichpunkte';
   document.getElementById('set-sprache').value      = s.sprache      || 'sachlich';
-  document.getElementById('set-apikey').value       = s.groq_api_key || '';
+  document.getElementById('set-provider').value     = s.ai_provider  || 'groq';
+  document.getElementById('set-apikey').value       = s.ai_apikey || s.groq_api_key || '';
+  onProviderChange();
   const hasTmpl = !!localStorage.getItem('vorlage_docx');
   const tmplEl = document.getElementById('tmpl-status');
-  tmplEl.textContent = hasTmpl ? '✓ Vorlage hinterlegt' : 'Keine Vorlage hinterlegt';
-  tmplEl.style.color = hasTmpl ? 'var(--success)' : 'var(--text-muted)';
+  if (tmplEl) {
+    tmplEl.textContent = hasTmpl ? '✓ Vorlage hinterlegt' : 'Keine Vorlage hinterlegt';
+    tmplEl.style.color = hasTmpl ? 'var(--success)' : 'var(--text-muted)';
+  }
   openModal('modal-settings');
 }
 
@@ -1409,7 +1440,8 @@ function saveSettings() {
     berichtsform: document.getElementById('set-berichtsform').value,
     darstellung:  document.getElementById('set-darstellung').value,
     sprache:      document.getElementById('set-sprache').value,
-    groq_api_key: document.getElementById('set-apikey').value.trim()
+    ai_provider:  document.getElementById('set-provider').value,
+    ai_apikey:    document.getElementById('set-apikey').value.trim()
   };
   S.set('settings', s);
   closeModal('modal-settings');
