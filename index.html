@@ -288,6 +288,74 @@
       margin: 16px 0 10px; padding-top: 14px;
       border-top: 1px solid var(--border);
     }
+    /* ── DESKTOP LAYOUT (≥768px) ─────────────────────────────────────────── */
+    @media (min-width: 768px) {
+      body {
+        max-width: 100%;
+        display: grid;
+        grid-template-columns: 240px 1fr;
+        grid-template-rows: 100vh;
+        background: #e8edf8;
+      }
+
+      /* Sidebar replaces bottom nav */
+      .nav {
+        position: fixed; left: 0; top: 0; bottom: 0;
+        width: 240px; height: 100vh;
+        flex-direction: column; justify-content: flex-start;
+        padding: 32px 12px 24px; gap: 4px;
+        border-top: none; border-right: 1px solid var(--border);
+        transform: none;
+        background: var(--surface);
+        z-index: 100;
+      }
+      .nav::before {
+        content: '🎓 AzubiBuddy';
+        display: block; font-size: 17px; font-weight: 700;
+        color: var(--primary); padding: 0 12px 24px;
+        border-bottom: 1px solid var(--border); margin-bottom: 8px;
+        width: 100%;
+      }
+      .nav-item {
+        flex-direction: row; justify-content: flex-start;
+        gap: 12px; padding: 12px 14px; border-radius: 10px;
+        font-size: 14px; font-weight: 500; width: 100%;
+      }
+      .nav-item.active { background: var(--primary-light); }
+      .nav-item svg { flex-shrink: 0; }
+
+      /* Main content area */
+      .screen {
+        margin-left: 240px;
+        max-width: 760px;
+        min-height: 100vh;
+        padding-bottom: 40px;
+      }
+
+      /* Header adjustments */
+      .header { padding: 32px 28px 16px; position: sticky; top: 0; }
+
+      /* Content padding */
+      .content { padding: 20px 28px; }
+
+      /* FAB repositioned */
+      .fab { right: calc(50% - 380px + 20px); bottom: 28px; }
+
+      /* Chat bar */
+      .chat-bar { left: 240px; max-width: 760px; transform: none; bottom: 0; }
+      .chat-messages { padding-bottom: 100px; }
+
+      /* Modals centered on desktop */
+      .overlay { align-items: center; justify-content: center; }
+      .sheet {
+        border-radius: var(--radius); max-width: 520px;
+        max-height: 85vh; padding: 28px;
+      }
+      .sheet-handle { display: none; }
+
+      /* Stats grid wider */
+      .stats-grid { grid-template-columns: repeat(4, 1fr); }
+    }
   </style>
 </head>
 <body>
@@ -307,6 +375,14 @@
       <div class="stat-card">
         <div class="stat-value" id="stat-ziele">0%</div>
         <div class="stat-label">Ziele erreicht</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-ziele-count">0</div>
+        <div class="stat-label">Lernziele</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-kw">–</div>
+        <div class="stat-label">Aktuelle KW</div>
       </div>
     </div>
 
@@ -593,6 +669,7 @@
       <input type="password" id="set-apikey" placeholder="gsk_…">
     </div>
     <div style="margin-top:16px">
+      <button class="btn btn-primary" onclick="saveSettings()" style="margin-bottom:8px">Speichern</button>
       <button class="btn btn-ghost" onclick="closeModal('modal-settings')">Abbrechen</button>
     </div>
   </div>
@@ -618,6 +695,7 @@ const saveZiele    = v => S.set('ziele', v);
 let currentScreen = 'home';
 let editingId = null;
 let chatHistory = [];
+let currentBerichtsform = 'wochen'; // read from settings, not from DOM
 
 // ── Navigation ────────────────────────────────────────────────────────────────
 function navigate(s) {
@@ -633,16 +711,19 @@ function navigate(s) {
 
 // ── HOME ──────────────────────────────────────────────────────────────────────
 function renderHome() {
+  const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
   const h = new Date().getHours();
   const g = h < 12 ? 'Guten Morgen' : h < 18 ? 'Guten Tag' : 'Guten Abend';
   const name = (getSettings().name || '').trim();
-  document.getElementById('home-greeting').textContent = g + (name ? ', ' + name : '') + ' 👋';
+  setText('home-greeting', g + (name ? ', ' + name : '') + ' 👋');
 
   const berichte = getBerichte();
   const ziele = getZiele();
   const pct = ziele.length ? Math.round(ziele.filter(z=>z.done).length / ziele.length * 100) : 0;
-  document.getElementById('stat-berichte').textContent = berichte.length;
-  document.getElementById('stat-ziele').textContent = pct + '%';
+  setText('stat-berichte', berichte.length);
+  setText('stat-ziele', pct + '%');
+  setText('stat-ziele-count', ziele.length);
+  setText('stat-kw', getKW(new Date()));
 
   const recent = berichte.slice(-3).reverse();
   const el = document.getElementById('home-recent');
@@ -714,7 +795,7 @@ function renderBerichte() {
 }
 
 function onBerichtsformChange() {
-  const form = document.getElementById('b-form').value;
+  const form = currentBerichtsform;
   const isTages = form === 'tages' || form === 'tages7';
   document.getElementById('b-standard-inputs').style.display = isTages ? 'none' : 'block';
   const dayInputs = document.getElementById('b-day-inputs');
@@ -728,13 +809,9 @@ function openNewBericht() {
   document.getElementById('bericht-title').textContent = 'Neuer Bericht';
   const now = new Date();
   const s = getSettings();
-  document.getElementById('b-kw').value    = getKW(now);
-  document.getElementById('b-jahr').value  = now.getFullYear();
-  document.getElementById('b-form').value        = s.berichtsform || 'wochen';
-  document.getElementById('b-darstellung').value = s.darstellung  || 'stichpunkte';
-  document.getElementById('b-berufsfeld').value  = 'technisch';
-  document.getElementById('b-detail').value      = 'mittel';
-  document.getElementById('b-sprache').value     = s.sprache      || 'sachlich';
+  currentBerichtsform = s.berichtsform || 'wochen';
+  document.getElementById('b-kw').value   = getKW(now);
+  document.getElementById('b-jahr').value = now.getFullYear();
   document.getElementById('b-betrieb').value = '';
   document.getElementById('b-schule').value  = '';
   ['b-mo','b-di','b-mi','b-do','b-fr','b-sa','b-so','b-schule-tag'].forEach(id => {
@@ -748,14 +825,10 @@ function editBericht(id) {
   const b = getBerichte().find(x=>x.id===id);
   if (!b) return;
   editingId = id;
+  currentBerichtsform = b.form || 'wochen';
   document.getElementById('bericht-title').textContent = 'Bericht bearbeiten';
-  document.getElementById('b-kw').value    = b.kw;
-  document.getElementById('b-jahr').value  = b.jahr;
-  document.getElementById('b-form').value        = b.form        || 'wochen';
-  document.getElementById('b-darstellung').value = b.darstellung || 'stichpunkte';
-  document.getElementById('b-berufsfeld').value  = b.berufsfeld  || 'technisch';
-  document.getElementById('b-detail').value      = b.detail      || 'mittel';
-  document.getElementById('b-sprache').value     = b.sprache     || 'sachlich';
+  document.getElementById('b-kw').value   = b.kw;
+  document.getElementById('b-jahr').value = b.jahr;
   if (b.tage) {
     document.getElementById('b-mo').value = b.tage.mo || '';
     document.getElementById('b-di').value = b.tage.di || '';
@@ -776,11 +849,11 @@ function editBericht(id) {
 function saveBericht() {
   const kw     = +document.getElementById('b-kw').value;
   const jahr   = +document.getElementById('b-jahr').value;
-  const form        = document.getElementById('b-form').value;
-  const darstellung = document.getElementById('b-darstellung').value;
-  const berufsfeld  = document.getElementById('b-berufsfeld').value;
-  const detail      = document.getElementById('b-detail').value;
-  const sprache     = document.getElementById('b-sprache').value;
+  const form        = currentBerichtsform;
+  const darstellung = getSettings().darstellung || 'stichpunkte';
+  const berufsfeld  = 'technisch';
+  const detail      = 'mittel';
+  const sprache     = getSettings().sprache || 'sachlich';
   const isTages = form === 'tages' || form === 'tages7';
 
   if (!kw || !jahr) { toast('Bitte KW und Jahr ausfüllen'); return; }
@@ -960,11 +1033,12 @@ function addTyper() {
 
 // ── KI-FORMULIERUNG ───────────────────────────────────────────────────────────
 async function kiFormulierung() {
-  const form        = document.getElementById('b-form').value;
-  const darstellung = document.getElementById('b-darstellung').value;
-  const berufsfeld  = document.getElementById('b-berufsfeld').value;
-  const detail      = document.getElementById('b-detail').value;
-  const sprache     = document.getElementById('b-sprache').value;
+  const form        = currentBerichtsform;
+  const s           = getSettings();
+  const darstellung = s.darstellung || 'stichpunkte';
+  const berufsfeld  = 'technisch';
+  const detail      = 'mittel';
+  const sprache     = s.sprache || 'sachlich';
   const kw          = document.getElementById('b-kw').value;
   const jahr        = document.getElementById('b-jahr').value;
   const isTages     = form === 'tages' || form === 'tages7';
