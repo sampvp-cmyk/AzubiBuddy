@@ -292,69 +292,81 @@
     @media (min-width: 768px) {
       body {
         max-width: 100%;
-        display: grid;
-        grid-template-columns: 240px 1fr;
-        grid-template-rows: 100vh;
-        background: #e8edf8;
+        display: flex;
+        flex-direction: row;
+        min-height: 100vh;
+        background: #eef2fb;
       }
 
-      /* Sidebar replaces bottom nav */
+      /* Sidebar */
       .nav {
         position: fixed; left: 0; top: 0; bottom: 0;
-        width: 240px; height: 100vh;
-        flex-direction: column; justify-content: flex-start;
-        padding: 32px 12px 24px; gap: 4px;
+        width: 220px; height: 100vh;
+        flex-direction: column; justify-content: flex-start; align-items: stretch;
+        padding: 0 12px 24px; gap: 2px;
         border-top: none; border-right: 1px solid var(--border);
-        transform: none;
-        background: var(--surface);
-        z-index: 100;
+        transform: none; background: var(--surface); z-index: 100;
+        overflow-y: auto;
       }
-      .nav::before {
-        content: '🎓 AzubiBuddy';
-        display: block; font-size: 17px; font-weight: 700;
-        color: var(--primary); padding: 0 12px 24px;
-        border-bottom: 1px solid var(--border); margin-bottom: 8px;
-        width: 100%;
+      .nav-logo {
+        display: flex; align-items: center; gap: 10px;
+        padding: 20px 10px 16px; margin-bottom: 8px;
+        border-bottom: 1px solid var(--border);
+        font-size: 16px; font-weight: 700; color: var(--primary);
       }
       .nav-item {
-        flex-direction: row; justify-content: flex-start;
-        gap: 12px; padding: 12px 14px; border-radius: 10px;
-        font-size: 14px; font-weight: 500; width: 100%;
+        flex-direction: row; justify-content: flex-start; align-items: center;
+        gap: 10px; padding: 10px 12px; border-radius: 10px;
+        font-size: 14px; font-weight: 500; width: 100%; text-align: left;
       }
       .nav-item.active { background: var(--primary-light); }
-      .nav-item svg { flex-shrink: 0; }
+      .nav-item svg { flex-shrink: 0; width: 20px; height: 20px; }
 
-      /* Main content area */
+      /* Screens */
       .screen {
-        margin-left: 240px;
-        max-width: 760px;
+        margin-left: 220px;
+        width: calc(100% - 220px);
+        max-width: 100%;
         min-height: 100vh;
         padding-bottom: 40px;
       }
 
-      /* Header adjustments */
-      .header { padding: 32px 28px 16px; position: sticky; top: 0; }
+      /* Header */
+      .header { padding: 24px 32px 16px; }
+      .header h1 { font-size: 24px; white-space: nowrap; }
 
-      /* Content padding */
-      .content { padding: 20px 28px; }
+      /* Content */
+      .content { padding: 20px 32px; max-width: 900px; }
 
-      /* FAB repositioned */
-      .fab { right: calc(50% - 380px + 20px); bottom: 28px; }
+      /* Stats */
+      .stats-grid { grid-template-columns: repeat(4, 1fr); gap: 12px; }
+      .stat-value { font-size: 26px; }
 
-      /* Chat bar */
-      .chat-bar { left: 240px; max-width: 760px; transform: none; bottom: 0; }
-      .chat-messages { padding-bottom: 100px; }
+      /* Quick access cards - horizontal on desktop */
+      #screen-home .card .list-item { padding: 14px 0; }
+      .list-title { font-size: 14px; white-space: normal; }
 
-      /* Modals centered on desktop */
+      /* FAB */
+      .fab { right: 32px; bottom: 32px; }
+
+      /* Chat */
+      .chat-bar {
+        left: 220px; width: calc(100% - 220px); max-width: 100%;
+        transform: none; bottom: 0; padding: 12px 32px;
+      }
+      .chat-messages { padding: 24px 32px; padding-bottom: 100px; max-width: 900px; }
+
+      /* Modals centered */
       .overlay { align-items: center; justify-content: center; }
       .sheet {
-        border-radius: var(--radius); max-width: 520px;
-        max-height: 85vh; padding: 28px;
+        border-radius: var(--radius); max-width: 560px; width: 100%;
+        max-height: 88vh; padding: 28px 32px 32px;
       }
       .sheet-handle { display: none; }
+      .sheet-title { font-size: 20px; }
 
-      /* Stats grid wider */
-      .stats-grid { grid-template-columns: repeat(4, 1fr); }
+      /* Plan / Berichtsheft content max width */
+      #bericht-list, #plan-list { max-width: 900px; }
     }
   </style>
 </head>
@@ -474,6 +486,10 @@
 
 <!-- ── BOTTOM NAV ───────────────────────────────────────────────────────────── -->
 <nav class="nav">
+  <div class="nav-logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+    AzubiBuddy
+  </div>
   <button class="nav-item active" id="nav-home" onclick="navigate('home')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
     Home
@@ -675,9 +691,9 @@
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.4/pizzip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.44.0/docxtemplater.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.4/pizzip.min.js" onerror="console.warn('PizZip konnte nicht geladen werden')"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.44.0/docxtemplater.js" onerror="console.warn('Docxtemplater konnte nicht geladen werden')"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js" onerror="console.warn('FileSaver konnte nicht geladen werden')"></script>
 
 <script>
 // ── Storage helpers ───────────────────────────────────────────────────────────
@@ -1171,20 +1187,90 @@ function saveKeyRetry() {
   kiFormulierung();
 }
 
-// ── WORD EXPORT ───────────────────────────────────────────────────────────────
-let storedTemplate = null; // ArrayBuffer of the .docx template
-
+// ── WORD EXPORT (kein CDN nötig) ─────────────────────────────────────────────
 function exportWord(id) {
   const b = getBerichte().find(x => x.id === id);
   if (!b) return;
-  // Check if we have a template stored
-  const tmplB64 = localStorage.getItem('vorlage_docx');
-  if (!tmplB64) {
-    // No template yet → ask user to upload one
-    openTemplateUpload(id);
-    return;
+  const s = getSettings();
+
+  // Build day rows for Tagesberichte
+  const days = [
+    ['Montag',     b.tage?.mo],
+    ['Dienstag',   b.tage?.di],
+    ['Mittwoch',   b.tage?.mi],
+    ['Donnerstag', b.tage?.do],
+    ['Freitag',    b.tage?.fr],
+    ['Samstag',    b.tage?.sa],
+    ['Sonntag',    b.tage?.so],
+  ].filter(([,v]) => v);
+
+  const isTages = days.length > 0;
+
+  let betriebHtml = '';
+  if (isTages) {
+    betriebHtml = days.map(([tag, inhalt]) =>
+      `<p><strong>${tag}:</strong><br>${(inhalt||'').replace(/\n/g,'<br>')}</p>`
+    ).join('');
+  } else {
+    betriebHtml = `<p>${(b.betrieb||'').replace(/\n/g,'<br>')}</p>`;
   }
-  generateDocx(b, tmplB64);
+
+  const html = `
+<html xmlns:o='urn:schemas-microsoft-com:office:office'
+      xmlns:w='urn:schemas-microsoft-com:office:word'
+      xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<meta charset='utf-8'>
+<style>
+  body { font-family: Arial, sans-serif; font-size: 11pt; margin: 2cm; }
+  h1 { font-size: 14pt; color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 6px; }
+  h2 { font-size: 11pt; color: #374151; margin-top: 16px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+  td { padding: 6px 10px; border: 1px solid #d1d5db; font-size: 10pt; }
+  td.label { background: #f3f4f6; font-weight: bold; width: 160px; }
+  p { margin: 4px 0; line-height: 1.6; }
+</style>
+</head>
+<body>
+<h1>Ausbildungsnachweis</h1>
+<table>
+  <tr><td class="label">Name</td><td>${s.name || ''}</td></tr>
+  <tr><td class="label">Ausbildungsbetrieb</td><td>${s.betrieb || ''}</td></tr>
+  <tr><td class="label">Ausbildungsberuf</td><td>${s.beruf || ''}</td></tr>
+  <tr><td class="label">Kalenderwoche</td><td>KW ${b.kw} / ${b.jahr}</td></tr>
+  <tr><td class="label">Berichtsform</td><td>${FORM_LABELS[b.form] || 'Wochenbericht'}</td></tr>
+</table>
+
+<h2>Betriebliche Tätigkeit</h2>
+${betriebHtml}
+
+<h2>Berufsschule</h2>
+<p>${(b.schule||'').replace(/\n/g,'<br>')}</p>
+
+<br><br>
+<table>
+  <tr>
+    <td style="width:50%;border:none;padding:0">
+      <p style="margin-top:40px;border-top:1px solid #000;padding-top:4px">Datum, Unterschrift Auszubildender</p>
+    </td>
+    <td style="width:50%;border:none;padding:0 0 0 40px">
+      <p style="margin-top:40px;border-top:1px solid #000;padding-top:4px">Datum, Unterschrift Ausbilder</p>
+    </td>
+  </tr>
+</table>
+</body>
+</html>`;
+
+  const blob = new Blob([html], { type: 'application/msword' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `Berichtsheft_KW${b.kw}_${b.jahr}.doc`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('Word-Datei wird heruntergeladen ✓');
 }
 
 function openTemplateUpload(pendingId) {
@@ -1206,6 +1292,20 @@ function openTemplateUpload(pendingId) {
 }
 
 function generateDocx(b, tmplB64) {
+  // Check if libraries loaded
+  if (typeof PizZip === 'undefined') {
+    alert('Fehler: PizZip nicht geladen. Bitte die Seite neu laden und nochmal versuchen.');
+    return;
+  }
+  if (typeof Docxtemplater === 'undefined') {
+    alert('Fehler: Docxtemplater nicht geladen. Bitte die Seite neu laden und nochmal versuchen.');
+    return;
+  }
+  if (typeof saveAs === 'undefined') {
+    alert('Fehler: FileSaver nicht geladen. Bitte die Seite neu laden und nochmal versuchen.');
+    return;
+  }
+
   try {
     const s = getSettings();
     const buf = base64ToArrayBuffer(tmplB64);
@@ -1216,16 +1316,14 @@ function generateDocx(b, tmplB64) {
       nullGetter: () => ''
     });
 
-    // Build data object with all possible placeholders
     const data = {
-      name:    s.name    || '',
+      name:         s.name    || '',
       betrieb_name: s.betrieb || '',
-      beruf:   s.beruf   || '',
-      kw:      String(b.kw),
-      jahr:    String(b.jahr),
-      betrieb: b.betrieb || '',
-      schule:  b.schule  || '',
-      // Tagesberichte
+      beruf:        s.beruf   || '',
+      kw:           String(b.kw),
+      jahr:         String(b.jahr),
+      betrieb:      b.betrieb || '',
+      schule:       b.schule  || '',
       mo: b.tage?.mo || '', di: b.tage?.di || '',
       mi: b.tage?.mi || '', do: b.tage?.do || '',
       fr: b.tage?.fr || '', sa: b.tage?.sa || '',
@@ -1233,12 +1331,20 @@ function generateDocx(b, tmplB64) {
     };
 
     doc.render(data);
-    const out = doc.getZip().generate({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    const out = doc.getZip().generate({
+      type: 'blob',
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    });
     saveAs(out, `Berichtsheft_KW${b.kw}_${b.jahr}.docx`);
     toast('Word-Datei wird heruntergeladen ✓');
   } catch(e) {
-    console.error(e);
-    toast('Fehler beim Export: ' + (e.message || 'Vorlage prüfen'));
+    console.error('Word Export Fehler:', e);
+    if (e.properties && e.properties.errors) {
+      const missing = e.properties.errors.map(err => err.properties?.id).filter(Boolean).join(', ');
+      alert(`Fehler in der Vorlage.\nFehlende oder falsche Platzhalter: ${missing}\n\nBitte prüfe deine .docx Vorlage.`);
+    } else {
+      alert('Fehler beim Export: ' + (e.message || 'Unbekannter Fehler') + '\n\nBitte prüfe ob die Vorlage eine gültige .docx Datei ist.');
+    }
   }
 }
 
